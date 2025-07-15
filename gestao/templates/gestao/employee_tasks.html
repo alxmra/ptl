@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">Your Tasks: {{ week_start|date:"F d, Y" }} - {{ week_end|date:"F d, Y" }}</h1>
+    <a href="{% url 'logout' %}" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Logout</a>
+</div>
+{% if error %}
+<p class="text-red-500">{{ error }}</p>
+{% else %}
+<div class="bg-white p-4 rounded shadow">
+    {% for day in days %}
+    <div class="mb-4">
+        <h2 class="text-lg font-semibold">{{ day.date|date:"l, F d" }}</h2>
+        {% for block in day.blocks %}
+        <div class="mt-2 p-2 bg-gray-100 rounded">
+            <p><strong>{{ block.name }}</strong></p>
+            <p><strong>Time:</strong> {{ block.start_time|time:"H:i" }} - {{ block.end_time|time:"H:i" }}</p>
+            <p><strong>Duration:</strong> {{ block.duration }} hours</p>
+            <p><strong>Location:</strong> {{ block.localization|default:"None" }}</p>
+            <p><strong>Client:</strong> {{ block.client|default:"None" }}</p>
+            <p><strong>Assigned:</strong> {% for emp in block.employees_assigned.all %}{{ emp.name }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</p>
+            <p><strong>Concluded:</strong> {% for emp in block.employees_concluded.all %}{{ emp.name }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</p>
+            <p><strong>Constant:</strong> {{ block.constant|yesno:"Yes,No" }}</p>
+        </div>
+        {% empty %}
+        <p class="text-gray-500">No tasks scheduled.</p>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

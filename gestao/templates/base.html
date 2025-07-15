@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        .time-slot { height: 60px; border-bottom: 1px solid #e5e7eb; }
+        .work-block { position: absolute; background: #bfdbfe; border: 1px solid #3b82f6; border-radius: 4px; padding: 4px; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        {% block content %}
+        {% endblock %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block content %}
+<div class="container mx-auto p-4">
+    <!-- htmx target for schedule content -->
+    <div id="schedule-content" class="bg-white rounded shadow">
+        <!-- Navigation moved inside the HTMX target -->
+        <div class="flex justify-between items-center mb-4 p-4 border-b" id="nav-bar">
+            <h1 class="text-2xl font-bold">Admin Schedule: {{ week_start|date:"F d, Y" }} - {{ week_end|date:"F d, Y" }}</h1>
+            <div>
+                <a href="{% url 'admin_schedule_week' prev_week.year prev_week.week %}" 
+                   hx-get="{% url 'admin_schedule_week' prev_week.year prev_week.week %}" 
+                   hx-target="#schedule-content" 
+                   class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Previous Week</a>
+                <a href="{% url 'admin_schedule' %}" 
+                   hx-get="{% url 'admin_schedule' %}" 
+                   hx-target="#schedule-content" 
+                   class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Current Week</a>
+                <a href="{% url 'admin_schedule_week' next_week.year next_week.week %}" 
+                   hx-get="{% url 'admin_schedule_week' next_week.year next_week.week %}" 
+                   hx-target="#schedule-content" 
+                   class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Next Week</a>
+            </div>
+        
+        <!-- Hidden data for JavaScript -->
+        <script type="application/json" id="block-data">
+        {
+            {% for day in days %}
+                {% for block_data in day.blocks %}
+                "{{ block_data.block.id }}": {
+                    "name": "{{ block_data.block.name|escapejs }}",
+                    "localization": "{{ block_data.block.localization|default:'None'|escapejs }}",
+                    "client": "{{ block_data.block.client.name|default:'None'|escapejs }}",
+                    "start_time": "{{ block_data.block.start_time|time:'H:i' }}",
+                    "end_time": "{{ block_data.block.end_time|time:'H:i' }}",
+                    "duration": "{{ block_data.block.duration }}",
+                    "employees_assigned": [
+                        {% for emp in block_data.block.employees_assigned.all %}
+                        "{{ emp.name|escapejs }}"{% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                    ],
+                    "employees_concluded": [
+                        {% for emp in block_data.block.employees_concluded.all %}
+                        "{{ emp.name|escapejs }}"{% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                    ],
+                    "constant": {{ block_data.block.constant|yesno:"true,false" }},
+                    "archived": {{ block_data.block.archived|yesno:"true,false" }}
+                }{% if not forloop.last or not forloop.parentloop.last %},{% endif %}
+                {% endfor %}
+            {% endfor %}
+        }
+        </script>
+        
+        <!-- Information balloon -->
+        <div id="info-balloon" class="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-4 hidden z-50 max-w-xs">
+            <div class="flex justify-between items-start mb-2">
+                <h3 class="font-bold text-gray-800" id="balloon-title"></h3>
+                <button onclick="hideBlockInfo()" class="text-gray-400 hover:text-gray-600 ml-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="balloon-content" class="text-sm text-gray-600 space-y-1">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+        
+        <script>
+            let blockData = {};
+            let currentBalloon = null;
+            
+            // Load block data when page loads or when HTMX updates content
+            function loadBlockData() {
+                try {
+                    const dataElement = document.getElementById('block-data');
+                    if (dataElement) {
+                        blockData = JSON.parse(dataElement.textContent);
+                    }
+                } catch (e) {
+                    console.error('Error parsing block data:', e);
+                }
+            }
+            
+            // Load on initial page load
+            document.addEventListener('DOMContentLoaded', loadBlockData);
+            
+            // Load after HTMX updates content
+            document.addEventListener('htmx:afterSwap', loadBlockData);
+            
+            function showBlockInfo(blockId, element, event) {
+                event.stopPropagation();
+                
+                const balloon = document.getElementById('info-balloon');
+                const title = document.getElementById('balloon-title');
+                const content = document.getElementById('balloon-content');
+                
+                const block = blockData[blockId];
+                if (!block) return;
+                
+                // Populate balloon content
+                title.textContent = block.name || 'Work Block';
+                
+                const employeesAssigned = block.employees_assigned.length > 0 ? 
+                    block.employees_assigned.join(', ') : 'None';
+                const employeesConcluded = block.employees_concluded.length > 0 ? 
+                    block.employees_concluded.join(', ') : 'None';
+                
+                content.innerHTML = `
+                    <div><strong>Time:</strong> ${block.start_time} - ${block.end_time}</div>
+                    <div><strong>Duration:</strong> ${block.duration} hours</div>
+                    <div><strong>Location:</strong> ${block.localization}</div>
+                    <div><strong>Client:</strong> ${block.client}</div>
+                    <div><strong>Assigned:</strong> ${employeesAssigned}</div>
+                    <div><strong>Concluded:</strong> ${employeesConcluded}</div>
+                    <div><strong>Constant:</strong> ${block.constant ? 'Yes' : 'No'}</div>
+                    ${block.archived ? '<div class="text-red-500"><strong>Archived</strong></div>' : ''}
+                `;
+                
+                // Position balloon next to the clicked element
+                const rect = element.getBoundingClientRect();
+                const balloonRect = balloon.getBoundingClientRect();
+                
+                let left = rect.right + 10;
+                let top = rect.top;
+                
+                // Adjust if balloon would go off screen
+                if (left + 300 > window.innerWidth) {
+                    left = rect.left - 310;
+                }
+                if (top + 200 > window.innerHeight) {
+                    top = rect.bottom - 200;
+                }
+                
+                balloon.style.left = left + 'px';
+                balloon.style.top = top + 'px';
+                balloon.classList.remove('hidden');
+                
+                currentBalloon = balloon;
+            }
+            
+            function hideBlockInfo() {
+                const balloon = document.getElementById('info-balloon');
+                balloon.classList.add('hidden');
+                currentBalloon = null;
+            }
+            
+            // Hide balloon when clicking outside
+            document.addEventListener('click', function(event) {
+                if (currentBalloon && !currentBalloon.contains(event.target) && 
+                    !event.target.closest('.work-block')) {
+                    hideBlockInfo();
+                }
+            });
+            
+            // Hide balloon when scrolling
+            document.addEventListener('scroll', function() {
+                if (currentBalloon) {
+                    hideBlockInfo();
+                }
+            });
+        </script>
+        </div>
+        
+        <!-- Schedule grid -->
+        <div class="grid grid-cols-[100px_repeat(7,1fr)] p-4" style="min-width: 0; position: relative;">
+            <!-- Time column -->
+            <div class="border-r border-gray-200" style="position: relative;">
+                <div class="h-12 border-b border-gray-200"></div>
+                {% for slot in time_slots %}
+                <div class="time-slot flex items-center px-2 text-sm border-b border-gray-100" style="height: 30px;">{{ slot.0 }}</div>
+                {% endfor %}
+            </div>
+            
+            <!-- Day columns -->
+            {% for day in days %}
+            <div class="relative border-r border-gray-200" style="position: relative;">
+                <div class="h-12 text-center font-semibold border-b border-gray-200 flex items-center justify-center">{{ day.date|date:"D, d M" }}</div>
+                
+                <!-- Time slot grid background -->
+                {% for slot in time_slots %}
+                <div class="time-slot border-b border-gray-100" style="height: 30px;"></div>
+                {% endfor %}
+                
+                <!-- Work blocks -->
+                {% for block_data in day.blocks %}
+                <div class="work-block cursor-pointer absolute bg-blue-200 border border-blue-400 rounded px-2 py-1 text-xs overflow-hidden hover:bg-blue-300 transition-colors" 
+                     style="top: {{ block_data.top }}px; height: {{ block_data.height }}px; width: {{ block_data.width }}%; left: {{ block_data.left }}%; z-index: 10;"
+                     onclick="showBlockInfo({{ block_data.block.id }}, this, event)">
+                    <p class="font-semibold text-blue-800 truncate">{{ block_data.block.name }}</p>
+                    <p class="text-blue-600 truncate">{{ block_data.block.localization|default:"None" }}</p>
+                    <p class="text-blue-600 truncate">{{ block_data.block.start_time|time:"H:i" }} - {{ block_data.block.end_time|time:"H:i" }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+{% endblock %}

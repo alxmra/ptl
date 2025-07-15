@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold">Weekly Schedule: {{ week_start|date:"F d, Y" }} - {{ week_end|date:"F d, Y" }}</h1>
+    <div>
+        <a href="{% url 'index_week' prev_week.year prev_week.week %}" 
+           hx-get="{% url 'index_week' prev_week.year prev_week.week %}" 
+           hx-target="#schedule" 
+           class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Previous Week</a>
+        <a href="{% url 'index' %}" 
+           hx-get="{% url 'index' %}" 
+           hx-target="#schedule" 
+           class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Current Week</a>
+        <a href="{% url 'index_week' next_week.year next_week.week %}" 
+           hx-get="{% url 'index_week' next_week.year next_week.week %}" 
+           hx-target="#schedule" 
+           class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Next Week</a>
+    </div>
+</div>
+<div id="schedule" class="grid grid-cols-1 md:grid-cols-7 gap-4">
+    {% for day in days %}
+    <div class="bg-white p-4 rounded shadow">
+        <h2 class="text-lg font-semibold">{{ day.date|date:"l, F d" }}</h2>
+        {% for block in day.blocks %}
+        <div class="mt-2 p-2 bg-gray-100 rounded">
+            <p><strong>Time:</strong> {{ block.start_time|time:"H:i" }} - {{ block.end_time|time:"H:i" }}</p>
+            <p><strong>Duration:</strong> {{ block.duration }} hours</p>
+            <p><strong>Assigned:</strong> {% for emp in block.employees_assigned.all %}{{ emp.name }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</p>
+            <p><strong>Concluded:</strong> {% for emp in block.employees_concluded.all %}{{ emp.name }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</p>
+            <p><strong>Constant:</strong> {{ block.constant|yesno:"Yes,No" }}</p>
+            {% if block.archived %}
+            <p class="text-red-500"><strong>Archived</strong></p>
+            {% endif %}
+        </div>
+        {% empty %}
+        <p class="text-gray-500">No work blocks scheduled.</p>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
