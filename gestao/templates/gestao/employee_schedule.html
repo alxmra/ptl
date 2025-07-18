@@ -1,0 +1,475 @@
+{% extends 'base.html' %} {% load humanize %} {% block content %}
+<div class="container mx-auto p-4">
+    <!-- htmx target for schedule content -->
+    <div id="schedule-content" class="bg-white rounded shadow">
+        <div id="schedule-inner">
+            <!-- Navigation moved inside the HTMX target for proper updating -->
+            <div
+                class="flex justify-between items-center mb-4 p-4 border-b"
+                id="nav-bar"
+            >
+                <h1 class="text-2xl font-bold" id="schedule-title">
+                    Employee Schedule: {{ week_start_formatted }} - {{
+                    week_end_formatted }}
+                </h1>
+                <div class="flex items-center space-x-2">
+                    {% if show_prev %}
+                    <a
+                        href="{% url 'employee_schedule_week' prev_week.year prev_week.week %}"
+                        hx-get="{% url 'employee_schedule_week' prev_week.year prev_week.week %}"
+                        hx-target="#schedule-inner"
+                        hx-swap="innerHTML"
+                        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        >Previous Week</a
+                    >
+                    {% endif %}
+                    <a
+                        href="{% url 'employee_schedule' %}"
+                        hx-get="{% url 'employee_schedule' %}"
+                        hx-target="#schedule-inner"
+                        hx-swap="innerHTML"
+                        class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                        >Current Week</a
+                    >
+                    <a
+                        href="{% url 'employee_schedule_week' next_week.year next_week.week %}"
+                        hx-get="{% url 'employee_schedule_week' next_week.year next_week.week %}"
+                        hx-target="#schedule-inner"
+                        hx-swap="innerHTML"
+                        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        >Next Week</a
+                    >
+                    <a
+                        href="{% url 'logout' %}"
+                        class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                        >Logout</a
+                    >
+                </div>
+            </div>
+
+            <!-- Hidden data for JavaScript -->
+            {{ block_data_json|json_script:"block-data" }}
+
+            <!-- Schedule grid -->
+            <div
+                class="grid grid-cols-[100px_repeat(7,1fr)] p-4"
+                style="min-width: 0; position: relative"
+            >
+                <!-- Time column -->
+                <div
+                    class="border-r border-gray-400"
+                    style="position: relative"
+                >
+                    <div class="h-12 border-b border-gray-400"></div>
+                    {% for slot in time_slots %}
+                    <div
+                        class="time-slot flex items-center px-2 text-sm border-b border-gray-300"
+                        style="height: 40px"
+                    >
+                        {{ slot.0 }}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Day columns -->
+                {% for day in days %}
+                <div
+                    class="relative border-r border-gray-400"
+                    style="position: relative"
+                >
+                    <div
+                        class="h-12 text-center font-semibold border-b border-gray-400 flex items-center justify-center"
+                    >
+                        {{ day.date|date:"D, d M" }}
+                    </div>
+
+                    <!-- Time slot grid background -->
+                    {% for slot in time_slots %}
+                    <div
+                        class="time-slot border-b border-gray-300"
+                        style="height: 40px"
+                    ></div>
+                    {% endfor %}
+
+                    <!-- Work blocks -->
+                    {% for block_data in day.blocks %}
+                    <div
+                        class="work-block cursor-pointer absolute rounded px-2 py-1 text-xs overflow-hidden transition-colors {% if block_data.is_completed %}bg-green-200 border border-green-400 hover:bg-green-300{% else %}bg-blue-200 border border-blue-400 hover:bg-blue-300{% endif %}"
+                        style="top: {{ block_data.top }}px; height: {{ block_data.height }}px; width: {{ block_data.width }}%; left: {{ block_data.left }}%; z-index: 10;"
+                        onclick="showBlockInfo('{{ block_data.block.id }}', this, event)"
+                        title="Click for details"
+                    >
+                        <p
+                            class="font-semibold {% if block_data.is_completed %}text-green-800{% else %}text-blue-800{% endif %} break-words"
+                        >
+                            {{ block_data.block.name|default:"Work Block" }}
+                        </p>
+                        {% if block_data.height > 25 %}
+                        <p
+                            class="{% if block_data.is_completed %}text-green-600{% else %}text-blue-600{% endif %} break-words"
+                        >
+                            {{ block_data.block.localization|default:"" }}
+                        </p>
+                        {% endif %} {% if block_data.is_completed %}
+                        <p class="text-green-600 font-bold">✓</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Information balloon -->
+    <div
+        id="info-balloon"
+        class="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-4 hidden z-50 max-w-xs"
+    >
+        <div class="flex justify-between items-start mb-2">
+            <h3 class="font-bold text-gray-800" id="balloon-title"></h3>
+            <button
+                onclick="hideBlockInfo()"
+                class="text-gray-400 hover:text-gray-600 ml-2"
+            >
+                <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                    ></path>
+                </svg>
+            </button>
+        </div>
+        <div id="balloon-content" class="text-sm text-gray-600 space-y-1">
+            <!-- Content will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Duration edit modal -->
+    <div
+        id="duration-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center"
+    >
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-bold mb-4">Edit Duration</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2"
+                    >Duration (decimal hours - e.g., 1.5 for 1h30m):</label
+                >
+                <input
+                    type="number"
+                    id="duration-input"
+                    step="0.25"
+                    min="0.25"
+                    class="w-full p-2 border rounded"
+                />
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button
+                    onclick="closeDurationModal()"
+                    class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                >
+                    Cancel
+                </button>
+                <button
+                    onclick="saveDuration()"
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var blockData = {};
+        var currentBalloon = null;
+        var currentBlockId = null;
+
+        // Load block data when page loads or when HTMX updates content
+        function loadBlockData() {
+            try {
+                const blockDataElement = document.getElementById("block-data");
+                if (blockDataElement) {
+                    blockData = JSON.parse(blockDataElement.textContent);
+                    console.log("Block data loaded:", blockData);
+                }
+            } catch (e) {
+                console.error("Error parsing block data:", e);
+                blockData = {};
+            }
+        }
+
+        // Load on initial page load
+        document.addEventListener("DOMContentLoaded", loadBlockData);
+
+        // Load after HTMX updates content
+        document.addEventListener("htmx:afterSwap", function () {
+            loadBlockData();
+        });
+
+        function showBlockInfo(blockId, element, event) {
+            event.stopPropagation();
+
+            console.log("Showing info for block:", blockId);
+
+            const balloon = document.getElementById("info-balloon");
+            const title = document.getElementById("balloon-title");
+            const content = document.getElementById("balloon-content");
+
+            const block = blockData[blockId];
+            if (!block) {
+                console.error("Block not found:", blockId);
+                return;
+            }
+
+            // Populate balloon content
+            title.textContent = block.name || "Work Block";
+
+            const employeesAssigned =
+                block.employees_assigned.length > 0
+                    ? block.employees_assigned.join(", ")
+                    : "Empty";
+            const employeesConcluded =
+                block.employees_concluded.length > 0
+                    ? block.employees_concluded.join(", ")
+                    : "Empty";
+
+            const completionButton = block.can_edit
+                ? `<button onclick="toggleCompletion('${blockId}')" class="w-full mt-2 px-3 py-1 ${block.is_completed ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"} text-white rounded text-sm">
+                    ${block.is_completed ? "Mark Incomplete" : "Mark Complete"}
+                   </button>`
+                : "";
+
+            const durationButton = block.can_edit
+                ? `<button onclick="editDuration('${blockId}', ${block.duration_numeric})" class="w-full mt-1 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm">
+                    Edit Duration
+                   </button>`
+                : "";
+
+            content.innerHTML = `
+                <div><strong>Time:</strong> ${block.start_time} - ${block.end_time}</div>
+                <div><strong>Your Duration:</strong> ${block.duration}</div>
+                <div><strong>Default Duration:</strong> ${block.default_duration}</div>
+                <div><strong>Location:</strong> ${block.localization}</div>
+                <div><strong>Client:</strong> ${block.client}</div>
+                <div><strong>Assigned:</strong> ${employeesAssigned}</div>
+                <div><strong>Concluded:</strong> ${employeesConcluded}</div>
+                <div><strong>Status:</strong> ${block.is_completed ? '<span class="text-green-600">Completed</span>' : '<span class="text-red-600">Pending</span>'}</div>
+                <div><strong>Constant:</strong> ${block.constant ? "Yes" : "No"}</div>
+                ${completionButton}
+                ${durationButton}
+            `;
+
+            // Show balloon first to get proper dimensions
+            balloon.classList.remove("hidden");
+
+            // Position balloon next to the clicked element
+            const rect = element.getBoundingClientRect();
+            const balloonRect = balloon.getBoundingClientRect();
+            const scrollTop =
+                window.pageYOffset || document.documentElement.scrollTop;
+            const scrollLeft =
+                window.pageXOffset || document.documentElement.scrollLeft;
+
+            let left = rect.right + scrollLeft + 10;
+            let top = rect.top + scrollTop;
+
+            // Adjust if balloon would go off screen
+            if (left + balloonRect.width > window.innerWidth + scrollLeft) {
+                left = rect.left + scrollLeft - balloonRect.width - 10;
+            }
+            if (top + balloonRect.height > window.innerHeight + scrollTop) {
+                top = rect.bottom + scrollTop - balloonRect.height;
+            }
+
+            // Ensure balloon doesn't go off the left edge
+            if (left < scrollLeft) {
+                left = scrollLeft + 10;
+            }
+
+            // Ensure balloon doesn't go off the top edge
+            if (top < scrollTop) {
+                top = scrollTop + 10;
+            }
+
+            balloon.style.left = left + "px";
+            balloon.style.top = top + "px";
+
+            currentBalloon = balloon;
+        }
+
+        function hideBlockInfo() {
+            const balloon = document.getElementById("info-balloon");
+            balloon.classList.add("hidden");
+            currentBalloon = null;
+        }
+
+        function toggleCompletion(blockId) {
+            fetch(`/toggle-completion/${blockId}/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        // Update the block data
+                        blockData[blockId].is_completed = data.is_completed;
+
+                        // Update the visual appearance
+                        const blockElement = document.querySelector(
+                            `[onclick="showBlockInfo('${blockId}', this, event)"]`,
+                        );
+                        if (blockElement) {
+                            if (data.is_completed) {
+                                blockElement.className =
+                                    blockElement.className.replace(
+                                        "bg-blue-200 border-blue-400 hover:bg-blue-300",
+                                        "bg-green-200 border-green-400 hover:bg-green-300",
+                                    );
+                                blockElement.innerHTML = blockElement.innerHTML
+                                    .replace("text-blue-800", "text-green-800")
+                                    .replace("text-blue-600", "text-green-600");
+                                if (!blockElement.innerHTML.includes("✓")) {
+                                    blockElement.innerHTML +=
+                                        '<p class="text-green-600 font-bold">✓</p>';
+                                }
+                            } else {
+                                blockElement.className =
+                                    blockElement.className.replace(
+                                        "bg-green-200 border-green-400 hover:bg-green-300",
+                                        "bg-blue-200 border-blue-400 hover:bg-blue-300",
+                                    );
+                                blockElement.innerHTML = blockElement.innerHTML
+                                    .replace("text-green-800", "text-blue-800")
+                                    .replace("text-green-600", "text-blue-600");
+                                blockElement.innerHTML =
+                                    blockElement.innerHTML.replace(
+                                        '<p class="text-green-600 font-bold">✓</p>',
+                                        "",
+                                    );
+                            }
+                        }
+
+                        hideBlockInfo();
+                    } else {
+                        alert("Error: " + data.error);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert("An error occurred while updating completion status");
+                });
+        }
+
+        function editDuration(blockId, currentDuration) {
+            currentBlockId = blockId;
+            document.getElementById("duration-input").value = currentDuration;
+            document
+                .getElementById("duration-modal")
+                .classList.remove("hidden");
+            hideBlockInfo();
+        }
+
+        function closeDurationModal() {
+            document.getElementById("duration-modal").classList.add("hidden");
+            currentBlockId = null;
+        }
+
+        function saveDuration() {
+            const duration = document.getElementById("duration-input").value;
+            if (!duration || parseFloat(duration) <= 0) {
+                alert("Please enter a valid duration");
+                return;
+            }
+
+            fetch(`/update-duration/${currentBlockId}/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: `duration=${duration}`,
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        // Update the block data
+                        blockData[currentBlockId].duration =
+                            data.duration_formatted;
+                        blockData[currentBlockId].duration_numeric =
+                            data.duration;
+                        closeDurationModal();
+                    } else {
+                        alert("Error: " + data.error);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert("An error occurred while updating duration");
+                });
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== "") {
+                const cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === name + "=") {
+                        cookieValue = decodeURIComponent(
+                            cookie.substring(name.length + 1),
+                        );
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Hide balloon when clicking outside
+        document.addEventListener("click", function (event) {
+            if (
+                currentBalloon &&
+                !currentBalloon.contains(event.target) &&
+                !event.target.closest(".work-block")
+            ) {
+                hideBlockInfo();
+            }
+        });
+
+        // Hide balloon when scrolling
+        document.addEventListener("scroll", function () {
+            if (currentBalloon) {
+                hideBlockInfo();
+            }
+        });
+
+        // Hide balloon when pressing Escape key
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                if (currentBalloon) {
+                    hideBlockInfo();
+                }
+                if (
+                    !document
+                        .getElementById("duration-modal")
+                        .classList.contains("hidden")
+                ) {
+                    closeDurationModal();
+                }
+            }
+        });
+    </script>
+</div>
+{% endblock %}

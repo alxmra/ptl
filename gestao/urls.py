@@ -2,9 +2,20 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path('', views.login_view, name='login'),
     path('admin-schedule/', views.index, name='admin_schedule'),
     path('admin-schedule/<int:year>/<int:week>/', views.index, name='admin_schedule_week'),
     path('employee-tasks/', views.employee_tasks, name='employee_tasks'),
+    path('employee-tasks/<int:year>/<int:week>/', views.employee_tasks, name='employee_tasks_week'),
+    path('employee-schedule/', views.employee_tasks, name='employee_schedule'),
+    path('employee-schedule/<int:year>/<int:week>/', views.employee_tasks, name='employee_schedule_week'),
+    path('toggle-completion/<int:block_id>/', views.toggle_completion, name='toggle_completion'),
+    path('update-duration/<int:block_id>/', views.update_duration, name='update_duration'),
+    path('admin-statistics/', views.admin_statistics, name='admin_statistics'),
+    path('admin-statistics/<int:year>/<int:month>/', views.admin_statistics, name='admin_statistics_month'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    path('api/employees/', views.api_employees, name='api_employees'),
+    path('api/work-block/<int:block_id>/assignments/', views.api_work_block_assignments, name='api_work_block_assignments'),
+    path('api/work-block/assign-employees/', views.api_assign_employees, name='api_assign_employees'),
 ]

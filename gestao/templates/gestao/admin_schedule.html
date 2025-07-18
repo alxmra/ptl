@@ -1,202 +1,707 @@
-{% extends 'base.html' %}
-{% load humanize %}
-{% block content %}
+{% extends 'base.html' %} {% load humanize %} {% block content %}
 <div class="container mx-auto p-4">
     <!-- htmx target for schedule content -->
     <div id="schedule-content" class="bg-white rounded shadow">
-        <!-- Navigation moved inside the HTMX target -->
-        <div class="flex justify-between items-center mb-4 p-4 border-b" id="nav-bar">
-            <h1 class="text-2xl font-bold">Admin Schedule: {{ week_start|date:"F d, Y" }} - {{ week_end|date:"F d, Y" }}</h1>
-            <div>
-                <a href="{% url 'admin_schedule_week' prev_week.year prev_week.week %}" 
-                   hx-get="{% url 'admin_schedule_week' prev_week.year prev_week.week %}" 
-                   hx-target="#schedule-content" 
-                   class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Previous Week</a>
-                <a href="{% url 'admin_schedule' %}" 
-                   hx-get="{% url 'admin_schedule' %}" 
-                   hx-target="#schedule-content" 
-                   class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Current Week</a>
-                <a href="{% url 'admin_schedule_week' next_week.year next_week.week %}" 
-                   hx-get="{% url 'admin_schedule_week' next_week.year next_week.week %}" 
-                   hx-target="#schedule-content" 
-                   class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Next Week</a>
+        <div id="schedule-inner">
+            <!-- Navigation moved inside the HTMX target for proper updating -->
+            <div
+                class="flex justify-between items-center mb-4 p-4 border-b"
+                id="nav-bar"
+            >
+                <h1 class="text-2xl font-bold" id="schedule-title">
+                    Admin Schedule: {{ week_start_formatted }} - {{
+                    week_end_formatted }}
+                </h1>
+                <div class="flex items-center space-x-2">
+                    <a
+                        href="{% url 'admin_schedule_week' prev_week.year prev_week.week %}"
+                        hx-get="{% url 'admin_schedule_week' prev_week.year prev_week.week %}"
+                        hx-target="#schedule-inner"
+                        hx-swap="innerHTML"
+                        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        >Previous Week</a
+                    >
+                    <a
+                        href="{% url 'admin_schedule' %}"
+                        hx-get="{% url 'admin_schedule' %}"
+                        hx-target="#schedule-inner"
+                        hx-swap="innerHTML"
+                        class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                        >Current Week</a
+                    >
+                    <a
+                        href="{% url 'admin_schedule_week' next_week.year next_week.week %}"
+                        hx-get="{% url 'admin_schedule_week' next_week.year next_week.week %}"
+                        hx-target="#schedule-inner"
+                        hx-swap="innerHTML"
+                        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        >Next Week</a
+                    >
+                    <a
+                        href="{% url 'admin_statistics' %}"
+                        class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+                        >Statistics</a
+                    >
+                    <a
+                        href="/admin/"
+                        class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                        >Admin Dashboard</a
+                    >
+                </div>
             </div>
-        
-        <!-- Hidden data for JavaScript -->
-        <script type="application/json" id="block-data">
-        {
-            {% for day in days %}
-                {% for block_data in day.blocks %}
-                "{{ block_data.block.id }}": {
-                    "name": "{{ block_data.block.name|escapejs }}",
-                    "localization": "{{ block_data.block.localization|default:'None'|escapejs }}",
-                    "client": "{{ block_data.block.client.name|default:'None'|escapejs }}",
-                    "start_time": "{{ block_data.block.start_time|time:'H:i' }}",
-                    "end_time": "{{ block_data.block.end_time|time:'H:i' }}",
-                    "duration": "{{ block_data.block.duration }}",
-                    "employees_assigned": [
-                        {% for emp in block_data.block.employees_assigned.all %}
-                        "{{ emp.name|escapejs }}"{% if not forloop.last %},{% endif %}
-                        {% endfor %}
-                    ],
-                    "employees_concluded": [
-                        {% for emp in block_data.block.employees_concluded.all %}
-                        "{{ emp.name|escapejs }}"{% if not forloop.last %},{% endif %}
-                        {% endfor %}
-                    ],
-                    "constant": {{ block_data.block.constant|yesno:"true,false" }},
-                    "archived": {{ block_data.block.archived|yesno:"true,false" }}
-                }{% if not forloop.last or not forloop.parentloop.last %},{% endif %}
-                {% endfor %}
-            {% endfor %}
-        }
-        </script>
-        
-        <!-- Information balloon -->
-        <div id="info-balloon" class="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-4 hidden z-50 max-w-xs">
-            <div class="flex justify-between items-start mb-2">
-                <h3 class="font-bold text-gray-800" id="balloon-title"></h3>
-                <button onclick="hideBlockInfo()" class="text-gray-400 hover:text-gray-600 ml-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            <div id="balloon-content" class="text-sm text-gray-600 space-y-1">
-                <!-- Content will be populated by JavaScript -->
-            </div>
-        </div>
-        
-        <script>
-            let blockData = {};
-            let currentBalloon = null;
-            
-            // Load block data when page loads or when HTMX updates content
-            function loadBlockData() {
-                try {
-                    const dataElement = document.getElementById('block-data');
-                    if (dataElement) {
-                        blockData = JSON.parse(dataElement.textContent);
-                    }
-                } catch (e) {
-                    console.error('Error parsing block data:', e);
-                }
-            }
-            
-            // Load on initial page load
-            document.addEventListener('DOMContentLoaded', loadBlockData);
-            
-            // Load after HTMX updates content
-            document.addEventListener('htmx:afterSwap', loadBlockData);
-            
-            function showBlockInfo(blockId, element, event) {
-                event.stopPropagation();
-                
-                const balloon = document.getElementById('info-balloon');
-                const title = document.getElementById('balloon-title');
-                const content = document.getElementById('balloon-content');
-                
-                const block = blockData[blockId];
-                if (!block) return;
-                
-                // Populate balloon content
-                title.textContent = block.name || 'Work Block';
-                
-                const employeesAssigned = block.employees_assigned.length > 0 ? 
-                    block.employees_assigned.join(', ') : 'None';
-                const employeesConcluded = block.employees_concluded.length > 0 ? 
-                    block.employees_concluded.join(', ') : 'None';
-                
-                content.innerHTML = `
-                    <div><strong>Time:</strong> ${block.start_time} - ${block.end_time}</div>
-                    <div><strong>Duration:</strong> ${block.duration} hours</div>
-                    <div><strong>Location:</strong> ${block.localization}</div>
-                    <div><strong>Client:</strong> ${block.client}</div>
-                    <div><strong>Assigned:</strong> ${employeesAssigned}</div>
-                    <div><strong>Concluded:</strong> ${employeesConcluded}</div>
-                    <div><strong>Constant:</strong> ${block.constant ? 'Yes' : 'No'}</div>
-                    ${block.archived ? '<div class="text-red-500"><strong>Archived</strong></div>' : ''}
-                `;
-                
-                // Position balloon next to the clicked element
-                const rect = element.getBoundingClientRect();
-                const balloonRect = balloon.getBoundingClientRect();
-                
-                let left = rect.right + 10;
-                let top = rect.top;
-                
-                // Adjust if balloon would go off screen
-                if (left + 300 > window.innerWidth) {
-                    left = rect.left - 310;
-                }
-                if (top + 200 > window.innerHeight) {
-                    top = rect.bottom - 200;
-                }
-                
-                balloon.style.left = left + 'px';
-                balloon.style.top = top + 'px';
-                balloon.classList.remove('hidden');
-                
-                currentBalloon = balloon;
-            }
-            
-            function hideBlockInfo() {
-                const balloon = document.getElementById('info-balloon');
-                balloon.classList.add('hidden');
-                currentBalloon = null;
-            }
-            
-            // Hide balloon when clicking outside
-            document.addEventListener('click', function(event) {
-                if (currentBalloon && !currentBalloon.contains(event.target) && 
-                    !event.target.closest('.work-block')) {
-                    hideBlockInfo();
-                }
-            });
-            
-            // Hide balloon when scrolling
-            document.addEventListener('scroll', function() {
-                if (currentBalloon) {
-                    hideBlockInfo();
-                }
-            });
-        </script>
-        </div>
-        
-        <!-- Schedule grid -->
-        <div class="grid grid-cols-[100px_repeat(7,1fr)] p-4" style="min-width: 0; position: relative;">
-            <!-- Time column -->
-            <div class="border-r border-gray-200" style="position: relative;">
-                <div class="h-12 border-b border-gray-200"></div>
-                {% for slot in time_slots %}
-                <div class="time-slot flex items-center px-2 text-sm border-b border-gray-100" style="height: 30px;">{{ slot.0 }}</div>
-                {% endfor %}
-            </div>
-            
-            <!-- Day columns -->
-            {% for day in days %}
-            <div class="relative border-r border-gray-200" style="position: relative;">
-                <div class="h-12 text-center font-semibold border-b border-gray-200 flex items-center justify-center">{{ day.date|date:"D, d M" }}</div>
-                
-                <!-- Time slot grid background -->
-                {% for slot in time_slots %}
-                <div class="time-slot border-b border-gray-100" style="height: 30px;"></div>
-                {% endfor %}
-                
-                <!-- Work blocks -->
-                {% for block_data in day.blocks %}
-                <div class="work-block cursor-pointer absolute bg-blue-200 border border-blue-400 rounded px-2 py-1 text-xs overflow-hidden hover:bg-blue-300 transition-colors" 
-                     style="top: {{ block_data.top }}px; height: {{ block_data.height }}px; width: {{ block_data.width }}%; left: {{ block_data.left }}%; z-index: 10;"
-                     onclick="showBlockInfo({{ block_data.block.id }}, this, event)">
-                    <p class="font-semibold text-blue-800 truncate">{{ block_data.block.name }}</p>
-                    <p class="text-blue-600 truncate">{{ block_data.block.localization|default:"None" }}</p>
-                    <p class="text-blue-600 truncate">{{ block_data.block.start_time|time:"H:i" }} - {{ block_data.block.end_time|time:"H:i" }}</p>
+            <!-- Hidden data for JavaScript -->
+            {{ block_data_json|json_script:"block-data" }}
+
+            <!-- Schedule grid -->
+            <div
+                class="grid grid-cols-[100px_repeat(7,1fr)] p-4"
+                style="min-width: 0; position: relative"
+            >
+                <!-- Time column -->
+                <div
+                    class="border-r border-gray-400"
+                    style="position: relative"
+                >
+                    <div class="h-12 border-b border-gray-400"></div>
+                    {% for slot in time_slots %}
+                    <div
+                        class="time-slot flex items-center px-2 text-sm border-b border-gray-300"
+                        style="height: 40px"
+                    >
+                        {{ slot.0 }}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Day columns -->
+                {% for day in days %}
+                <div
+                    class="relative border-r border-gray-400"
+                    style="position: relative"
+                >
+                    <div
+                        class="h-12 text-center font-semibold border-b border-gray-400 flex items-center justify-center"
+                    >
+                        {{ day.date|date:"D, d M" }}
+                    </div>
+
+                    <!-- Time slot grid background -->
+                    {% for slot in time_slots %}
+                    <div
+                        class="time-slot border-b border-gray-300"
+                        style="height: 40px"
+                    ></div>
+                    {% endfor %}
+
+                    <!-- Work blocks -->
+                    {% for block_data in day.blocks %}
+                    <div
+                        class="work-block cursor-pointer absolute bg-blue-200 border border-blue-400 rounded px-2 py-1 text-xs overflow-hidden hover:bg-blue-300 transition-colors"
+                        style="top: {{ block_data.top }}px; height: {{ block_data.height }}px; width: {{ block_data.width }}%; left: {{ block_data.left }}%; z-index: 10;"
+                        onclick="showBlockInfo('{{ block_data.block.id }}', this, event)"
+                        title="Click for details"
+                    >
+                        <p class="font-semibold text-blue-800 break-words">
+                            {{ block_data.block.name|default:"Work Block" }}
+                        </p>
+                        {% if block_data.height > 25 %}
+                        <p class="text-blue-600 break-words">
+                            {{ block_data.block.localization|default:"" }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
                 </div>
                 {% endfor %}
             </div>
-            {% endfor %}
         </div>
     </div>
+
+    <!-- Information balloon -->
+    <div
+        id="info-balloon"
+        class="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-4 hidden z-50 max-w-xs"
+    >
+        <div class="flex justify-between items-start mb-2">
+            <h3 class="font-bold text-gray-800" id="balloon-title"></h3>
+            <button
+                onclick="hideBlockInfo()"
+                class="text-gray-400 hover:text-gray-600 ml-2"
+            >
+                <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                    ></path>
+                </svg>
+            </button>
+        </div>
+        <div id="balloon-content" class="text-sm text-gray-600 space-y-1">
+            <!-- Content will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Employee Assignment Modal -->
+    <div
+        id="employee-assignment-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center"
+    >
+        <div
+            class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+        >
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">
+                    Assign Employees
+                </h2>
+                <button
+                    onclick="closeEmployeeModal()"
+                    class="text-gray-400 hover:text-gray-600"
+                >
+                    <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                        ></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="mb-4">
+                <h3
+                    id="modal-work-block-title"
+                    class="text-lg font-semibold text-gray-700"
+                ></h3>
+                <p
+                    id="modal-work-block-details"
+                    class="text-sm text-gray-600"
+                ></p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Available Employees -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4
+                        class="font-semibold text-gray-700 mb-3 flex items-center"
+                    >
+                        <svg
+                            class="w-5 h-5 mr-2 text-blue-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
+                            ></path>
+                        </svg>
+                        Available Employees
+                    </h4>
+                    <div
+                        id="available-employees"
+                        class="space-y-2 min-h-[200px] max-h-[300px] overflow-y-auto"
+                    >
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Assigned Employees -->
+                <div class="bg-green-50 rounded-lg p-4">
+                    <h4
+                        class="font-semibold text-gray-700 mb-3 flex items-center"
+                    >
+                        <svg
+                            class="w-5 h-5 mr-2 text-green-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            ></path>
+                        </svg>
+                        Assigned Employees
+                    </h4>
+                    <div
+                        id="assigned-employees"
+                        class="space-y-2 min-h-[200px] max-h-[300px] overflow-y-auto"
+                    >
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end space-x-3">
+                <button
+                    onclick="closeEmployeeModal()"
+                    class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                >
+                    Cancel
+                </button>
+                <button
+                    onclick="saveEmployeeAssignments()"
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                >
+                    Save Assignments
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var blockData = {};
+        var currentBalloon = null;
+
+        // Load block data when page loads or when HTMX updates content
+        function loadBlockData() {
+            try {
+                const blockDataElement = document.getElementById("block-data");
+                if (blockDataElement) {
+                    blockData = JSON.parse(blockDataElement.textContent);
+                    console.log("Block data loaded:", blockData);
+                }
+            } catch (e) {
+                console.error("Error parsing block data:", e);
+                blockData = {};
+            }
+        }
+
+        // Update navigation buttons
+        function updateNavigation() {
+            // Get current navigation data from the DOM
+            const currentTitle =
+                document.getElementById("schedule-title").textContent;
+            console.log("Current title:", currentTitle);
+
+            // Log navigation button states
+            const navButtons = document.querySelectorAll("#nav-bar a");
+            console.log("Navigation buttons found:", navButtons.length);
+            if (navButtons.length >= 3) {
+                console.log("Previous button href:", navButtons[0].href);
+                console.log("Next button href:", navButtons[2].href);
+            }
+        }
+
+        // Load on initial page load
+        document.addEventListener("DOMContentLoaded", loadBlockData);
+
+        // Load after HTMX updates content
+        document.addEventListener("htmx:afterSwap", function () {
+            loadBlockData();
+            // Add a small delay to ensure the navigation buttons are properly updated
+            setTimeout(function () {
+                console.log(
+                    "DEBUG: HTMX swap completed, navigation should be updated",
+                );
+            }, 150);
+        });
+
+        function showBlockInfo(blockId, element, event) {
+            event.stopPropagation();
+
+            console.log("Showing info for block:", blockId);
+
+            const balloon = document.getElementById("info-balloon");
+            const title = document.getElementById("balloon-title");
+            const content = document.getElementById("balloon-content");
+
+            const block = blockData[blockId];
+            if (!block) {
+                console.error("Block not found:", blockId);
+                return;
+            }
+
+            // Populate balloon content
+            title.textContent = block.name || "Work Block";
+
+            const employeesAssigned =
+                block.employees_assigned.length > 0
+                    ? block.employees_assigned.join(", ")
+                    : "Empty";
+            const employeesConcluded =
+                block.employees_concluded.length > 0
+                    ? block.employees_concluded.join(", ")
+                    : "Empty";
+
+            content.innerHTML = `
+                <div><strong>Time:</strong> ${block.start_time} - ${block.end_time}</div>
+                <div><strong>Duration:</strong> ${block.duration}</div>
+                <div><strong>Hourly Value:</strong> €${block.hourly_value}/h</div>
+                <div><strong>Location:</strong> ${block.localization}</div>
+                <div><strong>Client:</strong> ${block.client}</div>
+                <div><strong>Assigned:</strong> ${employeesAssigned}</div>
+                <div><strong>Concluded:</strong> ${employeesConcluded}</div>
+                <div><strong>Constant:</strong> ${block.constant ? "Yes" : "No"}</div>
+                ${block.archived ? '<div class="text-red-500"><strong>Archived</strong></div>' : ""}
+                <button onclick="openEmployeeModal('${blockId}')" class="w-full mt-3 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors">
+                    Assign Employees
+                </button>
+            `;
+
+            // Show balloon first to get proper dimensions
+            balloon.classList.remove("hidden");
+
+            // Position balloon next to the clicked element
+            const rect = element.getBoundingClientRect();
+            const balloonRect = balloon.getBoundingClientRect();
+            const scrollTop =
+                window.pageYOffset || document.documentElement.scrollTop;
+            const scrollLeft =
+                window.pageXOffset || document.documentElement.scrollLeft;
+
+            let left = rect.right + scrollLeft + 10;
+            let top = rect.top + scrollTop;
+
+            // Adjust if balloon would go off screen
+            if (left + balloonRect.width > window.innerWidth + scrollLeft) {
+                left = rect.left + scrollLeft - balloonRect.width - 10;
+            }
+            if (top + balloonRect.height > window.innerHeight + scrollTop) {
+                top = rect.bottom + scrollTop - balloonRect.height;
+            }
+
+            // Ensure balloon doesn't go off the left edge
+            if (left < scrollLeft) {
+                left = scrollLeft + 10;
+            }
+
+            // Ensure balloon doesn't go off the top edge
+            if (top < scrollTop) {
+                top = scrollTop + 10;
+            }
+
+            balloon.style.left = left + "px";
+            balloon.style.top = top + "px";
+
+            currentBalloon = balloon;
+        }
+
+        function hideBlockInfo() {
+            const balloon = document.getElementById("info-balloon");
+            balloon.classList.add("hidden");
+            currentBalloon = null;
+        }
+
+        // Hide balloon when clicking outside
+        document.addEventListener("click", function (event) {
+            if (
+                currentBalloon &&
+                !currentBalloon.contains(event.target) &&
+                !event.target.closest(".work-block")
+            ) {
+                hideBlockInfo();
+            }
+        });
+
+        // Hide balloon when scrolling
+        document.addEventListener("scroll", function () {
+            if (currentBalloon) {
+                hideBlockInfo();
+            }
+        });
+
+        // Hide balloon when pressing Escape key
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && currentBalloon) {
+                hideBlockInfo();
+            }
+        });
+
+        // Employee Assignment Modal Functions
+        let currentBlockId = null;
+        let allEmployees = [];
+        let currentAssignments = [];
+
+        // Load all employees data
+        function loadEmployeesData() {
+            fetch("/api/employees/")
+                .then((response) => response.json())
+                .then((data) => {
+                    allEmployees = data;
+                })
+                .catch((error) =>
+                    console.error("Error loading employees:", error),
+                );
+        }
+
+        function openEmployeeModal(blockId) {
+            currentBlockId = blockId;
+            const block = blockData[blockId];
+
+            if (!block) {
+                console.error("Block not found:", blockId);
+                return;
+            }
+
+            // Update modal title and details
+            document.getElementById("modal-work-block-title").textContent =
+                block.name || "Work Block";
+            document.getElementById("modal-work-block-details").textContent =
+                `${block.start_time} - ${block.end_time} • ${block.localization} • ${block.client}`;
+
+            // Load current assignments
+            fetch(`/api/work-block/${blockId}/assignments/`)
+                .then((response) => response.json())
+                .then((data) => {
+                    currentAssignments = data.assigned_employees || [];
+                    updateEmployeeModalLists();
+                    document
+                        .getElementById("employee-assignment-modal")
+                        .classList.remove("hidden");
+                })
+                .catch((error) => {
+                    console.error("Error loading assignments:", error);
+                    // Fallback to block data
+                    currentAssignments = block.employees_assigned || [];
+                    updateEmployeeModalLists();
+                    document
+                        .getElementById("employee-assignment-modal")
+                        .classList.remove("hidden");
+                });
+
+            hideBlockInfo();
+        }
+
+        function updateEmployeeModalLists() {
+            const availableContainer = document.getElementById(
+                "available-employees",
+            );
+            const assignedContainer =
+                document.getElementById("assigned-employees");
+
+            availableContainer.innerHTML = "";
+            assignedContainer.innerHTML = "";
+
+            // Load all employees if not already loaded
+            if (allEmployees.length === 0) {
+                loadEmployeesData();
+                // If still empty, get from block data as fallback
+                if (allEmployees.length === 0) {
+                    const allEmployeeNames = new Set();
+                    Object.values(blockData).forEach((block) => {
+                        block.employees_assigned.forEach((name) =>
+                            allEmployeeNames.add(name),
+                        );
+                    });
+                    allEmployees = Array.from(allEmployeeNames).map((name) => ({
+                        name,
+                    }));
+                }
+            }
+
+            // Create employee items
+            allEmployees.forEach((employee) => {
+                const employeeName = employee.name;
+                const isAssigned = currentAssignments.includes(employeeName);
+                const employeeItem = createEmployeeItem(
+                    employeeName,
+                    isAssigned,
+                );
+
+                if (isAssigned) {
+                    assignedContainer.appendChild(employeeItem);
+                } else {
+                    availableContainer.appendChild(employeeItem);
+                }
+            });
+
+            // Add empty state messages
+            if (availableContainer.children.length === 0) {
+                availableContainer.innerHTML =
+                    '<div class="text-gray-500 text-center py-8">All employees are assigned</div>';
+            }
+            if (assignedContainer.children.length === 0) {
+                assignedContainer.innerHTML =
+                    '<div class="text-gray-500 text-center py-8">No employees assigned</div>';
+            }
+        }
+
+        function createEmployeeItem(employeeName, isAssigned) {
+            const div = document.createElement("div");
+            div.className = `employee-item p-3 bg-white rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-all ${isAssigned ? "border-green-200" : "border-gray-200"}`;
+            div.draggable = true;
+            div.dataset.employeeName = employeeName;
+
+            div.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
+                            ${employeeName.charAt(0).toUpperCase()}
+                        </div>
+                        <span class="ml-3 font-medium text-gray-700">${employeeName}</span>
+                    </div>
+                    <button onclick="toggleEmployeeAssignment('${employeeName}')" class="text-sm px-2 py-1 rounded ${isAssigned ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-green-100 text-green-600 hover:bg-green-200"} transition-colors">
+                        ${isAssigned ? "Remove" : "Assign"}
+                    </button>
+                </div>
+            `;
+
+            // Add drag and drop functionality
+            div.addEventListener("dragstart", (e) => {
+                e.dataTransfer.setData("text/plain", employeeName);
+                div.classList.add("opacity-50");
+            });
+
+            div.addEventListener("dragend", () => {
+                div.classList.remove("opacity-50");
+            });
+
+            return div;
+        }
+
+        function toggleEmployeeAssignment(employeeName) {
+            const index = currentAssignments.indexOf(employeeName);
+            if (index > -1) {
+                currentAssignments.splice(index, 1);
+            } else {
+                currentAssignments.push(employeeName);
+            }
+            updateEmployeeModalLists();
+        }
+
+        function setupDropZones() {
+            const availableContainer = document.getElementById(
+                "available-employees",
+            );
+            const assignedContainer =
+                document.getElementById("assigned-employees");
+
+            [availableContainer, assignedContainer].forEach((container) => {
+                container.addEventListener("dragover", (e) => {
+                    e.preventDefault();
+                    container.classList.add("bg-blue-50", "border-blue-300");
+                });
+
+                container.addEventListener("dragleave", () => {
+                    container.classList.remove("bg-blue-50", "border-blue-300");
+                });
+
+                container.addEventListener("drop", (e) => {
+                    e.preventDefault();
+                    container.classList.remove("bg-blue-50", "border-blue-300");
+
+                    const employeeName = e.dataTransfer.getData("text/plain");
+                    const isAssignedContainer =
+                        container.id === "assigned-employees";
+
+                    if (
+                        isAssignedContainer &&
+                        !currentAssignments.includes(employeeName)
+                    ) {
+                        currentAssignments.push(employeeName);
+                        updateEmployeeModalLists();
+                    } else if (
+                        !isAssignedContainer &&
+                        currentAssignments.includes(employeeName)
+                    ) {
+                        const index = currentAssignments.indexOf(employeeName);
+                        currentAssignments.splice(index, 1);
+                        updateEmployeeModalLists();
+                    }
+                });
+            });
+        }
+
+        function closeEmployeeModal() {
+            document
+                .getElementById("employee-assignment-modal")
+                .classList.add("hidden");
+            currentBlockId = null;
+            currentAssignments = [];
+        }
+
+        function saveEmployeeAssignments() {
+            if (!currentBlockId) return;
+
+            const data = {
+                block_id: currentBlockId,
+                employee_names: currentAssignments,
+            };
+
+            fetch("/api/work-block/assign-employees/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
+                },
+                body: JSON.stringify(data),
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        // Update the block data
+                        blockData[currentBlockId].employees_assigned =
+                            currentAssignments;
+                        closeEmployeeModal();
+
+                        // Refresh the page to show updated assignments
+                        location.reload();
+                    } else {
+                        alert(
+                            "Error: " +
+                                (data.error || "Failed to save assignments"),
+                        );
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error saving assignments:", error);
+                    alert("An error occurred while saving assignments");
+                });
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== "") {
+                const cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === name + "=") {
+                        cookieValue = decodeURIComponent(
+                            cookie.substring(name.length + 1),
+                        );
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Initialize drag and drop when modal opens
+        document
+            .getElementById("employee-assignment-modal")
+            .addEventListener("transitionend", () => {
+                if (
+                    !document
+                        .getElementById("employee-assignment-modal")
+                        .classList.contains("hidden")
+                ) {
+                    setupDropZones();
+                }
+            });
+
+        // Initialize on page load
+        document.addEventListener("DOMContentLoaded", () => {
+            setupDropZones();
+            loadEmployeesData();
+        });
+    </script>
 </div>
-<script src="https://unpkg.com/htmx.org@1.9.10"></script>
 {% endblock %}

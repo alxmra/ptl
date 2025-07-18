@@ -1,13 +1,19 @@
 from django.contrib import admin
-from .models import Employee, WorkBlock, Client
+from .models import Employee, WorkBlock, Client, EmployeeWorkAssignment
 from datetime import datetime, timedelta
 from django.utils import timezone
 import calendar
 
+class EmployeeWorkAssignmentInline(admin.TabularInline):
+    model = EmployeeWorkAssignment
+    extra = 0
+    fields = ('employee', 'duration', 'is_completed', 'completed_date')
+    readonly_fields = ('completed_date',)
+
 class WorkBlockAdmin(admin.ModelAdmin):
-    list_display = ('name', 'day_of_month', 'month', 'year', 'start_time', 'end_time', 'localization', 'client', 'archived', 'constant')
+    list_display = ('name', 'day_of_month', 'month', 'year', 'start_time', 'end_time', 'localization', 'client', 'hourly_value', 'archived', 'constant')
     list_filter = ('archived', 'constant', 'client')
-    filter_horizontal = ('employees_assigned', 'employees_concluded')
+    inlines = [EmployeeWorkAssignmentInline]
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
@@ -39,8 +45,15 @@ class WorkBlockAdmin(admin.ModelAdmin):
                             constant=obj.constant,
                             archived=obj.archived
                         )
-                        new_block.employees_assigned.set(obj.employees_assigned.all())
+                        # Copy assignments from original block
+                        for assignment in EmployeeWorkAssignment.objects.filter(work_block=obj):
+                            EmployeeWorkAssignment.objects.create(
+                                employee=assignment.employee,
+                                work_block=new_block,
+                                duration=assignment.duration
+                            )
 
 admin.site.register(Employee)
 admin.site.register(WorkBlock, WorkBlockAdmin)
 admin.site.register(Client)
+admin.site.register(EmployeeWorkAssignment)
