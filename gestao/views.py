@@ -1390,3 +1390,32 @@ def api_get_employee_bonuses_penalties(request, employee_id):
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+@csrf_exempt
+def api_delete_bonus_penalty(request, bonus_penalty_id):
+    """Delete a bonus or penalty entry"""
+    try:
+        try:
+            bonus_penalty = BonusPenalty.objects.get(id=bonus_penalty_id)
+        except BonusPenalty.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Bonus/Penalty not found'}, status=404)
+
+        # Store info before deletion for response
+        employee_name = bonus_penalty.employee.name
+        type_name = bonus_penalty.get_type_display()
+        amount = float(bonus_penalty.amount)
+
+        # Delete the bonus/penalty
+        bonus_penalty.delete()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'{type_name} of €{amount:.2f} for {employee_name} has been deleted'
+        })
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

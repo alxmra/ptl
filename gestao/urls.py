@@ -24,4 +24,5 @@ urlpatterns = [
     path('api/work-block/<int:block_id>/details/', views.api_get_work_block_details, name='api_get_work_block_details'),
     path('api/bonus-penalty/add/', views.api_add_bonus_penalty, name='api_add_bonus_penalty'),
     path('api/employee/<int:employee_id>/bonuses-penalties/', views.api_get_employee_bonuses_penalties, name='api_get_employee_bonuses_penalties'),
+    path('api/bonus-penalty/<int:bonus_penalty_id>/delete/', views.api_delete_bonus_penalty, name='api_delete_bonus_penalty'),
 ]
