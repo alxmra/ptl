@@ -233,15 +233,6 @@
             // Populate balloon content
             title.textContent = block.name || "Work Block";
 
-            const employeesAssigned =
-                block.employees_assigned.length > 0
-                    ? block.employees_assigned.join(", ")
-                    : "Empty";
-            const employeesConcluded =
-                block.employees_concluded.length > 0
-                    ? block.employees_concluded.join(", ")
-                    : "Empty";
-
             const completionButton = block.can_edit
                 ? `<button onclick="toggleCompletion('${blockId}')" class="w-full mt-2 px-3 py-1 ${block.is_completed ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"} text-white rounded text-sm">
                     ${block.is_completed ? "Mark Incomplete" : "Mark Complete"}
@@ -260,10 +251,7 @@
                 <div><strong>Default Duration:</strong> ${block.default_duration}</div>
                 <div><strong>Location:</strong> ${block.localization}</div>
                 <div><strong>Client:</strong> ${block.client}</div>
-                <div><strong>Assigned:</strong> ${employeesAssigned}</div>
-                <div><strong>Concluded:</strong> ${employeesConcluded}</div>
                 <div><strong>Status:</strong> ${block.is_completed ? '<span class="text-green-600">Completed</span>' : '<span class="text-red-600">Pending</span>'}</div>
-                <div><strong>Constant:</strong> ${block.constant ? "Yes" : "No"}</div>
                 ${completionButton}
                 ${durationButton}
             `;
