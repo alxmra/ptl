@@ -10,7 +10,8 @@
             >
                 <div class="flex items-center space-x-3">
                     <h1 class="text-2xl font-bold" id="schedule-title">
-                        Admin Schedule: {{ week_start_formatted }} - {{ week_end_formatted }}
+                        Admin Schedule: {{ week_start_formatted }} - {{
+                        week_end_formatted }}
                     </h1>
                     <button
                         id="exit-zoom-btn"
@@ -117,8 +118,7 @@
                         <p
                             class="font-semibold {% if block_data.block.archived %}text-gray-700{% else %}text-blue-800{% endif %} break-words"
                         >
-                            {{ block_data.block.name|default:"Work Block" }}
-                            {% if block_data.block.archived %}
+                            {{ block_data.block.name|default:"Work Block" }} {% if block_data.block.archived %}
                             <span class="text-gray-500 italic">(Archived)</span>
                             {% endif %}
                         </p>
@@ -355,34 +355,42 @@
                     <div>
                         <label
                             class="block text-sm font-medium text-gray-700 mb-1"
-                            >Duration (hours)</label
+                            >Duration (HH:MM)</label
                         >
                         <input
-                            type="number"
-                            step="0.25"
+                            type="text"
                             id="edit-duration"
+                            placeholder="00:00"
+                            pattern="[0-9]{1,2}:[0-9]{2}"
+                            maxlength="5"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
                     <div>
                         <label
                             class="block text-sm font-medium text-gray-700 mb-1"
-                            >Start Time</label
+                            >Start Time (HH:MM or HH:MM:SS)</label
                         >
                         <input
-                            type="time"
+                            type="text"
                             id="edit-start-time"
+                            placeholder="00:00 or 00:00:00"
+                            pattern="[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?"
+                            maxlength="8"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
                     <div>
                         <label
                             class="block text-sm font-medium text-gray-700 mb-1"
-                            >End Time</label
+                            >End Time (HH:MM or HH:MM:SS)</label
                         >
                         <input
-                            type="time"
+                            type="text"
                             id="edit-end-time"
+                            placeholder="00:00 or 00:00:00"
+                            pattern="[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?"
+                            maxlength="8"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
@@ -918,6 +926,7 @@
                 const cookies = document.cookie.split(";");
                 for (let i = 0; i < cookies.length; i++) {
                     const cookie = cookies[i].trim();
+                    // Does this cookie string begin with the name we want?
                     if (cookie.substring(0, name.length + 1) === name + "=") {
                         cookieValue = decodeURIComponent(
                             cookie.substring(name.length + 1),
@@ -927,6 +936,120 @@
                 }
             }
             return cookieValue;
+        }
+
+        // Convert decimal hours to HH:MM format
+        function decimalToHoursMinutes(decimal) {
+            const hours = Math.floor(decimal);
+            const minutes = Math.round((decimal - hours) * 60);
+            return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+        }
+
+        // Convert HH:MM format to decimal hours
+        function hoursMinutesToDecimal(timeString) {
+            if (!timeString || !timeString.includes(":")) {
+                throw new Error(
+                    "Invalid time format. Please use HH:MM format.",
+                );
+            }
+            const [hours, minutes] = timeString.split(":").map(Number);
+            if (
+                isNaN(hours) ||
+                isNaN(minutes) ||
+                minutes >= 60 ||
+                minutes < 0 ||
+                hours < 0
+            ) {
+                throw new Error(
+                    "Invalid time format. Please use HH:MM format.",
+                );
+            }
+            return hours + minutes / 60;
+        }
+
+        // Format time input as user types
+        function formatTimeInput(input) {
+            let value = input.value.replace(/[^\d:]/g, "");
+            if (value.length === 2 && !value.includes(":")) {
+                value += ":";
+            }
+            if (value.length > 5) {
+                value = value.substr(0, 5);
+            }
+            input.value = value;
+        }
+
+        // Format time input (accepts HH:MM or HH:MM:SS) as user types
+        function formatFullTimeInput(input) {
+            let value = input.value.replace(/[^\d:]/g, "");
+            if (value.length === 2 && value.indexOf(":") === -1) {
+                value += ":";
+            }
+            if (
+                value.length === 5 &&
+                value.split(":").length === 2 &&
+                value.indexOf(":", 3) === -1
+            ) {
+                // Only add second colon if user continues typing past HH:MM
+                if (input.value.length > value.length) {
+                    value += ":";
+                }
+            }
+            if (value.length > 8) {
+                value = value.substr(0, 8);
+            }
+            input.value = value;
+        }
+
+        // Validate and normalize time format (accepts HH:MM or HH:MM:SS)
+        function validateAndNormalizeTime(timeString) {
+            if (!timeString) {
+                throw new Error("Time is required.");
+            }
+
+            const parts = timeString.split(":");
+
+            // Accept both HH:MM and HH:MM:SS formats
+            if (parts.length === 2) {
+                // HH:MM format - add :00 for seconds
+                const [hours, minutes] = parts.map(Number);
+                if (
+                    isNaN(hours) ||
+                    isNaN(minutes) ||
+                    hours < 0 ||
+                    hours >= 24 ||
+                    minutes < 0 ||
+                    minutes >= 60
+                ) {
+                    throw new Error(
+                        "Invalid time values. Hours: 00-23, Minutes: 00-59.",
+                    );
+                }
+                return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
+            } else if (parts.length === 3) {
+                // HH:MM:SS format
+                const [hours, minutes, seconds] = parts.map(Number);
+                if (
+                    isNaN(hours) ||
+                    isNaN(minutes) ||
+                    isNaN(seconds) ||
+                    hours < 0 ||
+                    hours >= 24 ||
+                    minutes < 0 ||
+                    minutes >= 60 ||
+                    seconds < 0 ||
+                    seconds >= 60
+                ) {
+                    throw new Error(
+                        "Invalid time values. Hours: 00-23, Minutes/Seconds: 00-59.",
+                    );
+                }
+                return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+            } else {
+                throw new Error(
+                    "Invalid time format. Please use HH:MM or HH:MM:SS format.",
+                );
+            }
         }
 
         // Initialize drag and drop when modal opens
@@ -1247,12 +1370,47 @@
                             editBlockData.name;
                         document.getElementById("edit-localization").value =
                             editBlockData.localization;
-                        document.getElementById("edit-start-time").value =
-                            editBlockData.start_time;
-                        document.getElementById("edit-end-time").value =
-                            editBlockData.end_time;
-                        document.getElementById("edit-duration").value =
-                            editBlockData.duration;
+                        const startTimeInput =
+                            document.getElementById("edit-start-time");
+                        const endTimeInput =
+                            document.getElementById("edit-end-time");
+
+                        // Ensure times are displayed in HH:MM:SS format
+                        startTimeInput.value =
+                            editBlockData.start_time.includes(":") &&
+                            editBlockData.start_time.split(":").length === 2
+                                ? editBlockData.start_time + ":00"
+                                : editBlockData.start_time;
+                        endTimeInput.value =
+                            editBlockData.end_time.includes(":") &&
+                            editBlockData.end_time.split(":").length === 2
+                                ? editBlockData.end_time + ":00"
+                                : editBlockData.end_time;
+
+                        // Add input formatting for time fields
+                        startTimeInput.addEventListener("input", function (e) {
+                            formatFullTimeInput(e.target);
+                        });
+                        endTimeInput.addEventListener("input", function (e) {
+                            formatFullTimeInput(e.target);
+                        });
+                        const durationInput =
+                            document.getElementById("edit-duration");
+                        durationInput.value = decimalToHoursMinutes(
+                            editBlockData.duration,
+                        );
+
+                        // Add input formatting for duration field
+                        durationInput.addEventListener("input", function (e) {
+                            let value = e.target.value.replace(/[^\d:]/g, "");
+                            if (value.length === 2 && !value.includes(":")) {
+                                value += ":";
+                            }
+                            if (value.length > 5) {
+                                value = value.substr(0, 5);
+                            }
+                            e.target.value = value;
+                        });
                         document.getElementById("edit-hourly-value").value =
                             editBlockData.hourly_value;
 
@@ -1361,9 +1519,11 @@
                     </div>
                     <div class="mt-2 space-y-2">
                         <div>
-                            <label class="block text-xs text-gray-500">Duration (hours)</label>
-                            <input type="number" step="0.25" value="${assignment.duration}"
+                            <label class="block text-xs text-gray-500">Duration (HH:MM)</label>
+                            <input type="text" value="${decimalToHoursMinutes(assignment.duration)}" placeholder="00:00"
+                                   pattern="[0-9]{1,2}:[0-9]{2}" maxlength="5"
                                    onchange="updateEditEmployeeDuration('${employeeName}', this.value)"
+                                   oninput="formatTimeInput(this)"
                                    class="w-full px-2 py-1 text-sm border border-gray-300 rounded">
                         </div>
                         <div class="flex items-center">
@@ -1412,10 +1572,23 @@
 
         function updateEditEmployeeDuration(employeeName, duration) {
             const assignment = editCurrentAssignments.find(
-                (emp) => emp.name === employeeName,
+                (a) => a.name === employeeName,
             );
             if (assignment) {
-                assignment.duration = parseFloat(duration);
+                try {
+                    assignment.duration = hoursMinutesToDecimal(duration);
+                } catch (error) {
+                    alert(error.message);
+                    // Reset to previous value on error
+                    const input = document.querySelector(
+                        `input[onchange*="${employeeName}"]`,
+                    );
+                    if (input) {
+                        input.value = decimalToHoursMinutes(
+                            assignment.duration,
+                        );
+                    }
+                }
             }
         }
 
@@ -1436,11 +1609,36 @@
                 localization:
                     document.getElementById("edit-localization").value,
                 client: document.getElementById("edit-client").value,
-                start_time: document.getElementById("edit-start-time").value,
-                end_time: document.getElementById("edit-end-time").value,
-                duration: parseFloat(
-                    document.getElementById("edit-duration").value,
-                ),
+                start_time: (() => {
+                    const startTime =
+                        document.getElementById("edit-start-time").value;
+                    try {
+                        return validateAndNormalizeTime(startTime);
+                    } catch (error) {
+                        alert("Start time error: " + error.message);
+                        throw error;
+                    }
+                })(),
+                end_time: (() => {
+                    const endTime =
+                        document.getElementById("edit-end-time").value;
+                    try {
+                        return validateAndNormalizeTime(endTime);
+                    } catch (error) {
+                        alert("End time error: " + error.message);
+                        throw error;
+                    }
+                })(),
+                duration: (() => {
+                    try {
+                        return hoursMinutesToDecimal(
+                            document.getElementById("edit-duration").value,
+                        );
+                    } catch (error) {
+                        alert(error.message);
+                        throw error;
+                    }
+                })(),
                 hourly_value: parseFloat(
                     document.getElementById("edit-hourly-value").value,
                 ),
