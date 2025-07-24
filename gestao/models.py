@@ -86,3 +86,34 @@ class WorkBlock(models.Model):
 
     def __str__(self):
         return f"{self.name or 'WorkBlock'} {self.day_of_month}/{self.month}/{self.year} {self.start_time}-{self.end_time}"
+
+
+class BonusPenalty(models.Model):
+    BONUS = 'bonus'
+    PENALTY = 'penalty'
+    TYPE_CHOICES = [
+        (BONUS, 'Bonus'),
+        (PENALTY, 'Penalty'),
+    ]
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='bonus_penalties')
+    type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Amount in euros")
+    justification = models.TextField(help_text="Reason for bonus or penalty")
+    month = models.IntegerField()
+    year = models.IntegerField()
+    created_date = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_date']
+
+    def __str__(self):
+        return f"{self.get_type_display()} for {self.employee.name}: €{self.amount} ({self.month}/{self.year})"
+
+    @property
+    def signed_amount(self):
+        """Return amount with appropriate sign for display"""
+        if self.type == self.PENALTY:
+            return -abs(self.amount)
+        return abs(self.amount)

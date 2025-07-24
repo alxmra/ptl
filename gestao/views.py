@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import WorkBlock, Employee, EmployeeWorkAssignment, Client
+from .models import WorkBlock, Employee, EmployeeWorkAssignment, Client, BonusPenalty
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.contrib.auth import authenticate, login, logout
@@ -509,6 +509,17 @@ def admin_statistics(request, year=None, month=None):
         # Value earned: Only based on completed hours × hourly rate
         total_value_earned = sum(assignment.duration * assignment.work_block.hourly_value for assignment in completed_assignments)
 
+        # Get bonuses and penalties for this employee in this month
+        bonuses_penalties = BonusPenalty.objects.filter(
+            employee=employee,
+            year=year,
+            month=month
+        ).order_by('-created_date')
+
+        # Calculate bonus/penalty adjustments
+        bonus_penalty_total = sum(bp.signed_amount for bp in bonuses_penalties)
+        final_value_earned = total_value_earned + bonus_penalty_total
+
         current_week_hours_assigned = sum(assignment.duration for assignment in current_week_filtered)
         current_week_blocks_assigned = len(current_week_filtered)
 
@@ -535,6 +546,10 @@ def admin_statistics(request, year=None, month=None):
             'employee': employee,
             'total_hours_worked': total_hours_worked,
             'total_value_earned': total_value_earned,
+            'final_value_earned': final_value_earned,
+            'bonus_penalty_total': bonus_penalty_total,
+            'bonuses_penalties': bonuses_penalties,
+            'has_bonus_penalty': bonuses_penalties.exists(),
             'current_week_hours_assigned': current_week_hours_assigned,
             'current_week_blocks_assigned': current_week_blocks_assigned,
             'expected_hours': expected_hours,
@@ -1262,5 +1277,116 @@ def api_get_work_block_details(request, block_id):
 
     except WorkBlock.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Work block not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+@csrf_exempt
+def api_add_bonus_penalty(request):
+    """Add a bonus or penalty for an employee"""
+    try:
+        import json
+        data = json.loads(request.body)
+
+        employee_id = data.get('employee_id')
+        type_value = data.get('type')  # 'bonus' or 'penalty'
+        amount = data.get('amount')
+        justification = data.get('justification')
+        month = data.get('month')
+        year = data.get('year')
+
+        # Validate required fields
+        if not all([employee_id, type_value, amount, justification, month, year]):
+            return JsonResponse({'success': False, 'error': 'Missing required fields'}, status=400)
+
+        if type_value not in ['bonus', 'penalty']:
+            return JsonResponse({'success': False, 'error': 'Invalid type. Must be "bonus" or "penalty"'}, status=400)
+
+        try:
+            amount = Decimal(str(amount))
+            if amount <= 0:
+                return JsonResponse({'success': False, 'error': 'Amount must be positive'}, status=400)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'error': 'Invalid amount'}, status=400)
+
+        try:
+            employee = Employee.objects.get(id=employee_id)
+        except Employee.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Employee not found'}, status=404)
+
+        # Create the bonus/penalty
+        bonus_penalty = BonusPenalty.objects.create(
+            employee=employee,
+            type=type_value,
+            amount=amount,
+            justification=justification,
+            month=int(month),
+            year=int(year),
+            created_by=request.user
+        )
+
+        return JsonResponse({
+            'success': True,
+            'bonus_penalty': {
+                'id': bonus_penalty.id,
+                'type': bonus_penalty.type,
+                'amount': float(bonus_penalty.amount),
+                'signed_amount': float(bonus_penalty.signed_amount),
+                'justification': bonus_penalty.justification,
+                'created_date': bonus_penalty.created_date.strftime('%Y-%m-%d %H:%M:%S'),
+                'created_by': bonus_penalty.created_by.username if bonus_penalty.created_by else 'Unknown'
+            }
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_admin)
+def api_get_employee_bonuses_penalties(request, employee_id):
+    """Get all bonuses and penalties for an employee in a specific month/year"""
+    try:
+        month = request.GET.get('month')
+        year = request.GET.get('year')
+
+        if not month or not year:
+            return JsonResponse({'success': False, 'error': 'Month and year are required'}, status=400)
+
+        try:
+            employee = Employee.objects.get(id=employee_id)
+        except Employee.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Employee not found'}, status=404)
+
+        bonuses_penalties = BonusPenalty.objects.filter(
+            employee=employee,
+            month=int(month),
+            year=int(year)
+        ).order_by('-created_date')
+
+        data = []
+        for bp in bonuses_penalties:
+            data.append({
+                'id': bp.id,
+                'type': bp.type,
+                'amount': float(bp.amount),
+                'signed_amount': float(bp.signed_amount),
+                'justification': bp.justification,
+                'created_date': bp.created_date.strftime('%Y-%m-%d %H:%M:%S'),
+                'created_by': bp.created_by.username if bp.created_by else 'Unknown'
+            })
+
+        return JsonResponse({
+            'success': True,
+            'employee_name': employee.name,
+            'bonuses_penalties': data,
+            'total_adjustment': float(sum(bp.signed_amount for bp in bonuses_penalties))
+        })
+
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

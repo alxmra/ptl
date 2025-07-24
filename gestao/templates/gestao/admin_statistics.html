@@ -1,6 +1,4 @@
-{% extends 'base.html' %}
-{% load humanize %}
-{% load duration_filters %}
+{% extends 'base.html' %} {% load humanize %} {% load duration_filters %} 
 {% block content %}
 
 <!-- Add Chart.js CDN -->
@@ -9,18 +7,35 @@
     <div class="bg-white rounded shadow">
         <!-- Navigation -->
         <div class="flex justify-between items-center mb-4 p-4 border-b">
-            <h1 class="text-2xl font-bold">Statistics: {{ month_name }} {{ year }}</h1>
+            <h1 class="text-2xl font-bold">
+                Statistics: {{ month_name }} {{ year }}
+            </h1>
             <div class="flex items-center space-x-2">
-                <a href="{% url 'admin_statistics_month' prev_month.year prev_month.month %}"
-                   class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Previous Month</a>
-                <a href="{% url 'admin_statistics' %}"
-                   class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Current Month</a>
-                <a href="{% url 'admin_statistics_month' next_month.year next_month.month %}"
-                   class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Next Month</a>
-                <a href="{% url 'admin_schedule' %}"
-                   class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">Schedule</a>
-                <a href="/admin/"
-                   class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Admin Dashboard</a>
+                <a
+                    href="{% url 'admin_statistics_month' prev_month.year prev_month.month %}"
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >Previous Month</a
+                >
+                <a
+                    href="{% url 'admin_statistics' %}"
+                    class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                    >Current Month</a
+                >
+                <a
+                    href="{% url 'admin_statistics_month' next_month.year next_month.month %}"
+                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >Next Month</a
+                >
+                <a
+                    href="{% url 'admin_schedule' %}"
+                    class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+                    >Schedule</a
+                >
+                <a
+                    href="/admin/"
+                    class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                    >Admin Dashboard</a
+                >
             </div>
         </div>
 
@@ -30,12 +45,16 @@
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold">Employee Statistics</h2>
                     <div class="flex space-x-2">
-                        <button onclick="hideAllEmployeeDetails()"
-                                class="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600">
+                        <button
+                            onclick="hideAllEmployeeDetails()"
+                            class="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
+                        >
                             Hide All Details
                         </button>
-                        <a href="{% url 'admin_statistics_month' year month %}?export=employee_csv"
-                           class="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600">
+                        <a
+                            href="{% url 'admin_statistics_month' year month %}?export=employee_csv"
+                            class="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                        >
                             Export Employee Data (CSV)
                         </a>
                     </div>
@@ -44,57 +63,154 @@
                     <table class="min-w-full bg-white border border-gray-300">
                         <thead class="bg-gray-100">
                             <tr>
-                                <th class="px-4 py-2 text-left border-b">Employee</th>
-                                <th class="px-4 py-2 text-left border-b">Hours Worked ({{ month_name }})</th>
-                                <th class="px-4 py-2 text-left border-b">Expected Hours</th>
-                                <th class="px-4 py-2 text-left border-b">Value Earned ({{ month_name }})</th>
-                                <th class="px-4 py-2 text-left border-b">Current Week Blocks</th>
-                                <th class="px-4 py-2 text-left border-b">Current Week Hours</th>
-                                <th class="px-4 py-2 text-left border-b">Details</th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Employee
+                                </th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Hours Worked ({{ month_name }})
+                                </th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Expected Hours
+                                </th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Value Earned ({{ month_name }})
+                                </th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Actions
+                                </th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Current Week Blocks
+                                </th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Current Week Hours
+                                </th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Details
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for stat in employee_stats %}
                             <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-2 border-b font-medium">{{ stat.employee.name }}</td>
-                                <td class="px-4 py-2 border-b">{{ stat.total_hours_worked|duration_format }}</td>
-                                <td class="px-4 py-2 border-b">{{ stat.expected_hours|duration_format }}</td>
-                                <td class="px-4 py-2 border-b">€{{ stat.total_value_earned|floatformat:2 }}</td>
-                                <td class="px-4 py-2 border-b">{{ stat.current_week_blocks_assigned }}</td>
-                                <td class="px-4 py-2 border-b">{{ stat.current_week_hours_assigned|duration_format }}</td>
+                                <td class="px-4 py-2 border-b font-medium">
+                                    {{ stat.employee.name }}
+                                </td>
                                 <td class="px-4 py-2 border-b">
-                                    <button onclick="toggleEmployeeDetails('{{ stat.employee.id }}')"
-                                            class="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
+                                    {{ stat.total_hours_worked|duration_format }}
+                                </td>
+                                <td class="px-4 py-2 border-b">
+                                    {{ stat.expected_hours|duration_format }}
+                                </td>
+                                <td class="px-4 py-2 border-b">
+                                    <div class="flex items-center space-x-2">
+                                        <span
+                                            >€ {{ stat.final_value_earned|floatformat:2 }} </span
+                                        >
+                                        {% if stat.has_bonus_penalty %}
+                                        <button
+                                            onclick="showBonusPenaltyDetails({{ stat.employee.id }}, '{{ stat.employee.name|escapejs }}', {{ year }}, {{ month }})"
+                                            class="text-blue-500 hover:text-blue-700"
+                                        >
+                                            <svg
+                                                class="w-4 h-4"
+                                                fill="currentColor"
+                                                viewBox="0 0 20 20"
+                                            >
+                                                <path
+                                                    fill-rule="evenodd"
+                                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                                                    clip-rule="evenodd"
+                                                ></path>
+                                            </svg>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    {% if stat.bonus_penalty_total != 0 %}
+                                    <div class="text-xs text-gray-500">
+                                        Base: €{{ stat.total_value_earned|floatformat:2 }}
+                                        {% if stat.bonus_penalty_total > 0 %}
+                                        <span class="text-green-600"
+                                            >+€{{ stat.bonus_penalty_total|floatformat:2 }}</span
+                                        >
+                                        {% else %}
+                                        <span class="text-red-600"
+                                            >€{{
+                                            stat.bonus_penalty_total|floatformat:2
+                                            }}</span
+                                        >
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-2 border-b">
+                                    <button
+                                        onclick="openBonusPenaltyModal({{ stat.employee.id }}, '{{ stat.employee.name|escapejs }}', {{ year }}, {{ month }})"
+                                        class="px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 mr-1"
+                                    >
+                                        Bonus/Penalty
+                                    </button>
+                                </td>
+                                <td class="px-4 py-2 border-b">
+                                    {{ stat.current_week_blocks_assigned }}
+                                </td>
+                                <td class="px-4 py-2 border-b">
+                                    {{ stat.current_week_hours_assigned|duration_format }}
+                                </td>
+                                <td class="px-4 py-2 border-b">
+                                    <button
+                                        onclick="toggleEmployeeDetails('{{ stat.employee.id }}')"
+                                        class="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                                    >
                                         Show Details
                                     </button>
                                 </td>
                             </tr>
-                            <tr id="employee-details-{{ stat.employee.id }}" class="hidden">
-                                <td colspan="7" class="px-4 py-2 bg-gray-50 border-b">
+                            <tr
+                                id="employee-details-{{ stat.employee.id }}"
+                                class="hidden"
+                            >
+                                <td
+                                    colspan="8"
+                                    class="px-4 py-2 bg-gray-50 border-b"
+                                >
                                     <div class="max-h-60 overflow-y-auto">
-                                        <h4 class="font-semibold mb-2">Daily Work Details for {{ stat.employee.name }}:</h4>
+                                        <h4 class="font-semibold mb-2">
+                                            Daily Work Details for {{ stat.employee.name }}:
+                                        </h4>
                                         {% for day, day_data in stat.daily_work %}
-                                        <div class="mb-3 p-2 bg-white rounded border">
-                                            <h5 class="font-medium text-sm mb-1">
+                                        <div
+                                            class="mb-3 p-2 bg-white rounded border"
+                                        >
+                                            <h5
+                                                class="font-medium text-sm mb-1"
+                                            >
                                                 {{ day_data.date|date:"l, F d" }} - Total: {{ day_data.total_hours|duration_format }}
                                             </h5>
                                             {% for assignment in day_data.assignments %}
                                             <div class="text-xs ml-4 mb-1">
-                                                <strong>{{ assignment.work_block.name|default:"Work Block" }}</strong>
-                                                ({{ assignment.work_block.client.name|default:"Outros" }}) - {{ assignment.duration|duration_format }}
-                                                @ €{{ assignment.work_block.hourly_value|floatformat:2 }}/h{% if assignment.work_block.localization %} - {{ assignment.work_block.localization }}{% endif %}
+                                                <strong
+                                                    >{{ assignment.work_block.name|default:"Work Block" }}</strong
+                                                >
+                                                ({{ assignment.work_block.client.name|default:"Outros" }}) - {{ assignment.duration|duration_format }} @ €{{ assignment.work_block.hourly_value|floatformat:2 }}/h{% if assignment.work_block.localization %} - {{ assignment.work_block.localization }}{% endif %}
                                             </div>
                                             {% endfor %}
                                         </div>
                                         {% empty %}
-                                        <p class="text-sm text-gray-500">No work completed this month.</p>
+                                        <p class="text-sm text-gray-500">
+                                            No work completed this month.
+                                        </p>
                                         {% endfor %}
                                     </div>
                                 </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="7" class="px-4 py-2 text-center text-gray-500">No employee data available</td>
+                                <td
+                                    colspan="8"
+                                    class="px-4 py-2 text-center text-gray-500"
+                                >
+                                    No employee data available
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -107,12 +223,16 @@
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold">Client Statistics</h2>
                     <div class="flex space-x-2">
-                        <button onclick="hideAllClientDetails()"
-                                class="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600">
+                        <button
+                            onclick="hideAllClientDetails()"
+                            class="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
+                        >
                             Hide All Details
                         </button>
-                        <a href="{% url 'admin_statistics_month' year month %}?export=client_csv"
-                           class="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600">
+                        <a
+                            href="{% url 'admin_statistics_month' year month %}?export=client_csv"
+                            class="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                        >
                             Export Client Data (CSV)
                         </a>
                     </div>
@@ -121,51 +241,108 @@
                     <table class="min-w-full bg-white border border-gray-300">
                         <thead class="bg-gray-100">
                             <tr>
-                                <th class="px-4 py-2 text-left border-b">Client</th>
-                                <th class="px-4 py-2 text-left border-b">Hours Worked (All employees summed) ({{ month_name }})</th>
-                                <th class="px-4 py-2 text-left border-b">Total Value</th>
-                                <th class="px-4 py-2 text-left border-b">Workers Count</th>
-                                <th class="px-4 py-2 text-left border-b">Details</th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Client
+                                </th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Hours Worked (All employees summed) ({{
+                                    month_name }})
+                                </th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Total Value
+                                </th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Workers Count
+                                </th>
+                                <th class="px-4 py-2 text-left border-b">
+                                    Details
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for stat in client_stats %}
                             <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-2 border-b font-medium">{{ stat.client.name }}</td>
-                                <td class="px-4 py-2 border-b">{{ stat.total_hours|duration_format }}</td>
-                                <td class="px-4 py-2 border-b">€{{ stat.total_value|floatformat:2 }}</td>
-                                <td class="px-4 py-2 border-b">{{ stat.unique_workers }}</td>
+                                <td class="px-4 py-2 border-b font-medium">
+                                    {{ stat.client.name }}
+                                </td>
                                 <td class="px-4 py-2 border-b">
-                                    <button onclick="toggleClientDetails('{{ stat.client.id }}')"
-                                            class="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
+                                    {{ stat.total_hours|duration_format }}
+                                </td>
+                                <td class="px-4 py-2 border-b">
+                                    €{{ stat.total_value|floatformat:2 }}
+                                </td>
+                                <td class="px-4 py-2 border-b">
+                                    {{ stat.unique_workers }}
+                                </td>
+                                <td class="px-4 py-2 border-b">
+                                    <button
+                                        onclick="toggleClientDetails('{{ stat.client.id }}')"
+                                        class="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                                    >
                                         Show Details
                                     </button>
                                 </td>
                             </tr>
-                            <tr id="client-details-{{ stat.client.id }}" class="hidden">
-                                <td colspan="5" class="px-4 py-2 bg-gray-50 border-b">
+                            <tr
+                                id="client-details-{{ stat.client.id }}"
+                                class="hidden"
+                            >
+                                <td
+                                    colspan="5"
+                                    class="px-4 py-2 bg-gray-50 border-b"
+                                >
                                     <div class="max-h-60 overflow-y-auto">
-                                        <h4 class="font-semibold mb-2">Daily Work Details for {{ stat.client.name }}:</h4>
+                                        <h4 class="font-semibold mb-2">
+                                            Daily Work Details for {{
+                                            stat.client.name }}:
+                                        </h4>
                                         {% for day, day_data in stat.daily_work %}
-                                        <div class="mb-3 p-2 bg-white rounded border">
-                                            <h5 class="font-medium text-sm mb-1">{{ day_data.date|date:"l, F d" }}</h5>
+                                        <div
+                                            class="mb-3 p-2 bg-white rounded border"
+                                        >
+                                            <h5
+                                                class="font-medium text-sm mb-1"
+                                            >
+                                                {{ day_data.date|date:"l, F d"
+                                                }}
+                                            </h5>
                                             {% for assignment in day_data.assignments %}
                                             <div class="text-xs ml-4 mb-1">
-                                                <strong>{{ assignment.employee.name }}</strong>: {{ assignment.work_block.name|default:"Work Block" }}
-                                                ({{ assignment.work_block.start_time|time:"H:i" }}-{{ assignment.work_block.end_time|time:"H:i" }}) - {{ assignment.duration|duration_format }}
-                                                @ €{{ assignment.work_block.hourly_value|floatformat:2 }}/h{% if assignment.work_block.localization %} - {{ assignment.work_block.localization }}{% endif %}
+                                                <strong
+                                                    >{{ assignment.employee.name
+                                                    }}</strong
+                                                >: {{
+                                                assignment.work_block.name|default:"Work
+                                                Block" }} ({{
+                                                assignment.work_block.start_time|time:"H:i"
+                                                }}-{{
+                                                assignment.work_block.end_time|time:"H:i"
+                                                }}) - {{
+                                                assignment.duration|duration_format
+                                                }} @ €{{
+                                                assignment.work_block.hourly_value|floatformat:2
+                                                }}/h{% if assignment.work_block.localization %} - {{
+                                                assignment.work_block.localization
+                                                }}{% endif %}
                                             </div>
                                             {% endfor %}
                                         </div>
                                         {% empty %}
-                                        <p class="text-sm text-gray-500">No work completed this month.</p>
+                                        <p class="text-sm text-gray-500">
+                                            No work completed this month.
+                                        </p>
                                         {% endfor %}
                                     </div>
                                 </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="px-4 py-2 text-center text-gray-500">No client data available</td>
+                                <td
+                                    colspan="5"
+                                    class="px-4 py-2 text-center text-gray-500"
+                                >
+                                    No client data available
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -175,32 +352,49 @@
 
             <!-- Charts Section -->
             <div class="mb-8">
-                <h2 class="text-xl font-semibold mb-4">Daily Work Hours Charts</h2>
+                <h2 class="text-xl font-semibold mb-4">
+                    Daily Work Hours Charts
+                </h2>
 
                 <!-- Employee Chart -->
                 <div class="bg-white p-6 rounded-lg shadow-md mb-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold">Employee Daily Hours</h3>
+                        <h3 class="text-lg font-semibold">
+                            Employee Daily Hours
+                        </h3>
                         <div class="flex items-center space-x-2">
                             <label class="text-sm font-medium">Show:</label>
-                            <button onclick="selectAllEmployees()"
-                                    class="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
+                            <button
+                                onclick="selectAllEmployees()"
+                                class="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                            >
                                 All
                             </button>
-                            <button onclick="deselectAllEmployees()"
-                                    class="px-2 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600">
+                            <button
+                                onclick="deselectAllEmployees()"
+                                class="px-2 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
+                            >
                                 None
                             </button>
                         </div>
                     </div>
 
                     <!-- Employee Selection -->
-                    <div class="mb-4 max-h-32 overflow-y-auto border rounded p-2">
+                    <div
+                        class="mb-4 max-h-32 overflow-y-auto border rounded p-2"
+                    >
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                             {% for stat in employee_stats %}
                             <label class="flex items-center space-x-2">
-                                <input type="checkbox" class="employee-checkbox" value="{{ stat.employee.id }}" checked />
-                                <span class="text-sm">{{ stat.employee.name }}</span>
+                                <input
+                                    type="checkbox"
+                                    class="employee-checkbox"
+                                    value="{{ stat.employee.id }}"
+                                    checked
+                                />
+                                <span class="text-sm"
+                                    >{{ stat.employee.name }}</span
+                                >
                             </label>
                             {% endfor %}
                         </div>
@@ -214,27 +408,42 @@
                 <!-- Client Chart -->
                 <div class="bg-white p-6 rounded-lg shadow-md mb-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold">Client Daily Hours</h3>
+                        <h3 class="text-lg font-semibold">
+                            Client Daily Hours
+                        </h3>
                         <div class="flex items-center space-x-2">
                             <label class="text-sm font-medium">Show:</label>
-                            <button onclick="selectAllClients()"
-                                    class="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
+                            <button
+                                onclick="selectAllClients()"
+                                class="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                            >
                                 All
                             </button>
-                            <button onclick="deselectAllClients()"
-                                    class="px-2 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600">
+                            <button
+                                onclick="deselectAllClients()"
+                                class="px-2 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
+                            >
                                 None
                             </button>
                         </div>
                     </div>
 
                     <!-- Client Selection -->
-                    <div class="mb-4 max-h-32 overflow-y-auto border rounded p-2">
+                    <div
+                        class="mb-4 max-h-32 overflow-y-auto border rounded p-2"
+                    >
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                             {% for stat in client_stats %}
                             <label class="flex items-center space-x-2">
-                                <input type="checkbox" class="client-checkbox" value="{{ stat.client.id }}" checked />
-                                <span class="text-sm">{{ stat.client.name }}</span>
+                                <input
+                                    type="checkbox"
+                                    class="client-checkbox"
+                                    value="{{ stat.client.id }}"
+                                    checked
+                                />
+                                <span class="text-sm"
+                                    >{{ stat.client.name }}</span
+                                >
                             </label>
                             {% endfor %}
                         </div>
@@ -250,23 +459,37 @@
             <div class="mb-8">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold">Monthly Summary</h2>
-                    <a href="{% url 'admin_statistics_month' year month %}?export=combined_csv"
-                       class="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
+                    <a
+                        href="{% url 'admin_statistics_month' year month %}?export=combined_csv"
+                        class="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                    >
                         Export Combined Data (CSV)
                     </a>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="bg-blue-100 p-4 rounded">
-                        <h3 class="font-semibold text-blue-800">Total Employees</h3>
-                        <p class="text-2xl font-bold text-blue-600">{{ employee_stats|length }}</p>
+                        <h3 class="font-semibold text-blue-800">
+                            Total Employees
+                        </h3>
+                        <p class="text-2xl font-bold text-blue-600">
+                            {{ employee_stats|length }}
+                        </p>
                     </div>
                     <div class="bg-green-100 p-4 rounded">
-                        <h3 class="font-semibold text-green-800">Total Clients</h3>
-                        <p class="text-2xl font-bold text-green-600">{{ client_stats|length }}</p>
+                        <h3 class="font-semibold text-green-800">
+                            Total Clients
+                        </h3>
+                        <p class="text-2xl font-bold text-green-600">
+                            {{ client_stats|length }}
+                        </p>
                     </div>
                     <div class="bg-purple-100 p-4 rounded">
-                        <h3 class="font-semibold text-purple-800">Current Month</h3>
-                        <p class="text-2xl font-bold text-purple-600">{{ month_name }}</p>
+                        <h3 class="font-semibold text-purple-800">
+                            Current Month
+                        </h3>
+                        <p class="text-2xl font-bold text-purple-600">
+                            {{ month_name }}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -541,6 +764,275 @@
             button.classList.add('bg-blue-500', 'hover:bg-blue-600');
         });
     }
+
+    // Bonus/Penalty Modal Functions
+    function openBonusPenaltyModal(employeeId, employeeName, year, month) {
+        document.getElementById('employee-id').value = employeeId;
+        document.getElementById('bonus-penalty-year').value = year;
+        document.getElementById('bonus-penalty-month').value = month;
+        document.getElementById('modal-employee-name').textContent = employeeName;
+
+        // Reset form
+        document.getElementById('bonusPenaltyForm').reset();
+        document.getElementById('employee-id').value = employeeId;
+        document.getElementById('bonus-penalty-year').value = year;
+        document.getElementById('bonus-penalty-month').value = month;
+
+        document.getElementById('bonusPenaltyModal').classList.remove('hidden');
+    }
+
+    function closeBonusPenaltyModal() {
+        document.getElementById('bonusPenaltyModal').classList.add('hidden');
+    }
+
+    function submitBonusPenalty() {
+        const form = document.getElementById('bonusPenaltyForm');
+        const formData = new FormData(form);
+
+        const data = {
+            employee_id: formData.get('employee_id'),
+            type: formData.get('type'),
+            amount: formData.get('amount'),
+            justification: formData.get('justification'),
+            year: formData.get('year'),
+            month: formData.get('month')
+        };
+
+        // Validate required fields
+        if (!data.type || !data.amount || !data.justification) {
+            alert('Please fill in all fields');
+            return;
+        }
+
+        fetch('/api/bonus-penalty/add/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('Bonus/Penalty added successfully!');
+                closeBonusPenaltyModal();
+                // Reload the page to reflect changes
+                window.location.reload();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while adding the bonus/penalty');
+        });
+    }
+
+    function showBonusPenaltyDetails(employeeId, employeeName, year, month) {
+        document.getElementById('details-employee-name').textContent = employeeName;
+        document.getElementById('details-month-year').textContent = getMonthName(month) + ' ' + year;
+
+        fetch(`/api/employee/${employeeId}/bonuses-penalties/?month=${month}&year=${year}`)
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                displayBonusPenaltyDetails(result.bonuses_penalties, result.total_adjustment);
+                document.getElementById('bonusPenaltyDetailsModal').classList.remove('hidden');
+            } else {
+                alert('Error loading bonus/penalty details: ' + result.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while loading bonus/penalty details');
+        });
+    }
+
+    function displayBonusPenaltyDetails(bonusPenalties, totalAdjustment) {
+        const container = document.getElementById('bonusPenaltyList');
+
+        if (bonusPenalties.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">No bonuses or penalties found.</p>';
+            return;
+        }
+
+        let html = '';
+        bonusPenalties.forEach(bp => {
+            const isBonus = bp.type === 'bonus';
+            const amountClass = isBonus ? 'text-green-600' : 'text-red-600';
+            const typeLabel = isBonus ? 'Bonus' : 'Penalty';
+            const sign = isBonus ? '+' : '';
+
+            html += `
+                <div class="border rounded-lg p-3 mb-3 bg-gray-50">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-medium ${amountClass}">${typeLabel}: ${sign}€${bp.amount.toFixed(2)}</span>
+                        <span class="text-xs text-gray-500">${new Date(bp.created_date).toLocaleDateString()}</span>
+                    </div>
+                    <p class="text-sm text-gray-700 mb-1">${bp.justification}</p>
+                    <p class="text-xs text-gray-500">Added by: ${bp.created_by}</p>
+                </div>
+            `;
+        });
+
+        if (totalAdjustment !== 0) {
+            const totalClass = totalAdjustment > 0 ? 'text-green-600' : 'text-red-600';
+            const totalSign = totalAdjustment > 0 ? '+' : '';
+            html += `
+                <div class="border-t pt-3 mt-3">
+                    <div class="flex justify-between items-center font-semibold">
+                        <span>Total Adjustment:</span>
+                        <span class="${totalClass}">${totalSign}€${Math.abs(totalAdjustment).toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    }
+
+    function closeBonusPenaltyDetailsModal() {
+        document.getElementById('bonusPenaltyDetailsModal').classList.add('hidden');
+    }
+
+    function getMonthName(monthNumber) {
+        const months = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        return months[monthNumber - 1];
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 </script>
+
+<!-- Bonus/Penalty Modal -->
+<div
+    id="bonusPenaltyModal"
+    class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+>
+    <div
+        class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white"
+    >
+        <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">
+                Add Bonus/Penalty for <span id="modal-employee-name"></span>
+            </h3>
+
+            <form id="bonusPenaltyForm">
+                <input type="hidden" id="employee-id" name="employee_id" />
+                <input type="hidden" id="bonus-penalty-year" name="year" />
+                <input type="hidden" id="bonus-penalty-month" name="month" />
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2"
+                        >Type</label
+                    >
+                    <select
+                        name="type"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    >
+                        <option value="">Select type...</option>
+                        <option value="bonus">Bonus</option>
+                        <option value="penalty">Penalty</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2"
+                        >Amount (€)</label
+                    >
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        name="amount"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="0.00"
+                        required
+                    />
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2"
+                        >Justification</label
+                    >
+                    <textarea
+                        name="justification"
+                        rows="3"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Reason for bonus/penalty..."
+                        required
+                    ></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2">
+                    <button
+                        type="button"
+                        onclick="closeBonusPenaltyModal()"
+                        class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onclick="submitBonusPenalty()"
+                        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                        Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bonus/Penalty Details Modal -->
+<div
+    id="bonusPenaltyDetailsModal"
+    class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+>
+    <div
+        class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white"
+    >
+        <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">
+                Bonuses & Penalties for <span id="details-employee-name"></span>
+            </h3>
+            <p class="text-sm text-gray-600 mb-4">
+                Period: <span id="details-month-year"></span>
+            </p>
+
+            <div id="bonusPenaltyList" class="max-h-96 overflow-y-auto">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+
+            <div class="flex justify-end mt-4">
+                <button
+                    type="button"
+                    onclick="closeBonusPenaltyDetailsModal()"
+                    class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                >
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Employee, WorkBlock, Client, EmployeeWorkAssignment
+from .models import Employee, WorkBlock, Client, EmployeeWorkAssignment, BonusPenalty
 from datetime import datetime, timedelta
 from django.utils import timezone
 import calendar
@@ -53,7 +53,19 @@ class WorkBlockAdmin(admin.ModelAdmin):
                                 duration=assignment.duration
                             )
 
+class BonusPenaltyAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'type', 'amount', 'month', 'year', 'created_date', 'created_by')
+    list_filter = ('type', 'year', 'month', 'created_date')
+    search_fields = ('employee__name', 'justification')
+    readonly_fields = ('created_date', 'created_by')
+
+    def save_model(self, request, obj, form, change):
+        if not change:  # Only set created_by for new objects
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
 admin.site.register(Employee)
 admin.site.register(WorkBlock, WorkBlockAdmin)
 admin.site.register(Client)
 admin.site.register(EmployeeWorkAssignment)
+admin.site.register(BonusPenalty, BonusPenaltyAdmin)
