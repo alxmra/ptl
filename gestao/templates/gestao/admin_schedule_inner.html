@@ -1,8 +1,18 @@
 <!-- Navigation bar - included in HTMX updates -->
 <div class="flex justify-between items-center mb-4 p-4 border-b" id="nav-bar">
-    <h1 class="text-2xl font-bold" id="schedule-title">
-        Admin Schedule: {{ week_start_formatted }} - {{ week_end_formatted }}
-    </h1>
+    <div class="flex items-center space-x-3">
+        <h1 class="text-2xl font-bold" id="schedule-title">
+            Admin Schedule: {{ week_start_formatted }} - {{ week_end_formatted }}
+        </h1>
+        <button
+            id="exit-zoom-btn"
+            onclick="exitDayZoom()"
+            class="hidden px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+            title="Exit zoom mode"
+        >
+            Exit Zoom
+        </button>
+    </div>
     <div class="flex items-center space-x-2">
         <a
             href="{% url 'admin_schedule_week' prev_week.year prev_week.week %}"
@@ -46,7 +56,8 @@
 
 <!-- Schedule grid with darker borders -->
 <div
-    class="grid grid-cols-[100px_repeat(7,1fr)] p-4"
+    id="schedule-grid"
+    class="grid grid-cols-[100px_repeat(7,1fr)] p-4 transition-all duration-300 ease-in-out"
     style="min-width: 0; position: relative"
 >
     <!-- Time column -->
@@ -64,9 +75,15 @@
 
     <!-- Day columns -->
     {% for day in days %}
-    <div class="relative border-r border-gray-400" style="position: relative">
+    <div
+        class="day-column relative border-r border-gray-400 transition-all duration-300 ease-in-out"
+        style="position: relative"
+        data-day-index="{{ forloop.counter0 }}"
+    >
         <div
-            class="h-12 text-center font-semibold border-b border-gray-400 flex items-center justify-center"
+            class="h-12 text-center font-semibold border-b border-gray-400 flex items-center justify-center cursor-pointer hover:bg-blue-50 transition-all duration-200 ease-in-out"
+            onclick="toggleDayZoom({{ forloop.counter0 }})"
+            title="Click to zoom into this day"
         >
             {{ day.date|date:"D, d M" }}
         </div>
@@ -82,16 +99,21 @@
         <!-- Work blocks -->
         {% for block_data in day.blocks %}
         <div
-            class="work-block cursor-pointer absolute bg-blue-200 border border-blue-400 rounded px-2 py-1 text-xs overflow-hidden hover:bg-blue-300 transition-colors"
+            class="work-block cursor-pointer absolute {% if block_data.block.archived %}bg-gray-300 border border-gray-500{% else %}bg-blue-200 border border-blue-400{% endif %} bg-blue-200 border border-blue-400 rounded px-2 py-1 text-xs overflow-hidden {% if block_data.block.archived %}hover:bg-gray-400{% else %}hover:bg-blue-300{% endif %} hover:bg-blue-300 transition-all duration-300 ease-in-out"
             style="top: {{ block_data.top }}px; height: {{ block_data.height }}px; width: {{ block_data.width }}%; left: {{ block_data.left }}%; z-index: 10;"
             onclick="showBlockInfo('{{ block_data.block.id }}', this, event)"
             title="Click for details"
         >
-            <p class="font-semibold text-blue-800 break-words">
-                {{ block_data.block.name|default:"Work Block" }}
+            <p
+                class="font-semibold {% if block_data.block.archived %}text-gray-700{% else %}text-blue-800{% endif %} text-blue-800 break-words"
+            >
+                {{ block_data.block.name|default:"Work Block" }} 
+                {% if block_data.block.archived %}
+                <span class="text-gray-500 italic">(Archived)</span>
+                {% endif %}
             </p>
             {% if block_data.height > 25 %}
-            <p class="text-blue-600 break-words">
+            <p class="{% if block_data.block.archived %}text-gray-600{% else %}text-blue-600{% endif %} break-words">
                 {{ block_data.block.localization|default:"" }}
             </p>
             {% endif %}
@@ -209,263 +231,3 @@
         </div>
     </div>
 </div>
-
-<script>
-    // Employee Assignment Modal Functions
-    let currentBlockId = null;
-    let allEmployees = [];
-    let currentAssignments = [];
-
-    // Load all employees data
-    function loadEmployeesData() {
-        fetch("/api/employees/")
-            .then((response) => response.json())
-            .then((data) => {
-                allEmployees = data;
-            })
-            .catch((error) => console.error("Error loading employees:", error));
-    }
-
-    function openEmployeeModal(blockId) {
-        currentBlockId = blockId;
-        const block = blockData[blockId];
-
-        if (!block) {
-            console.error("Block not found:", blockId);
-            return;
-        }
-
-        // Update modal title and details
-        document.getElementById("modal-work-block-title").textContent =
-            block.name || "Work Block";
-        document.getElementById("modal-work-block-details").textContent =
-            `${block.start_time} - ${block.end_time} • ${block.localization} • ${block.client}`;
-
-        // Load current assignments
-        fetch(`/api/work-block/${blockId}/assignments/`)
-            .then((response) => response.json())
-            .then((data) => {
-                currentAssignments = data.assigned_employees || [];
-                updateEmployeeModalLists();
-                document
-                    .getElementById("employee-assignment-modal")
-                    .classList.remove("hidden");
-            })
-            .catch((error) => {
-                console.error("Error loading assignments:", error);
-                // Fallback to block data
-                currentAssignments = block.employees_assigned || [];
-                updateEmployeeModalLists();
-                document
-                    .getElementById("employee-assignment-modal")
-                    .classList.remove("hidden");
-            });
-
-        hideBlockInfo();
-    }
-
-    function updateEmployeeModalLists() {
-        const availableContainer = document.getElementById(
-            "available-employees",
-        );
-        const assignedContainer = document.getElementById("assigned-employees");
-
-        availableContainer.innerHTML = "";
-        assignedContainer.innerHTML = "";
-
-        // Load all employees if not already loaded
-        if (allEmployees.length === 0) {
-            loadEmployeesData();
-            // If still empty, get from block data as fallback
-            if (allEmployees.length === 0) {
-                const allEmployeeNames = new Set();
-                Object.values(blockData).forEach((block) => {
-                    block.employees_assigned.forEach((name) =>
-                        allEmployeeNames.add(name),
-                    );
-                });
-                allEmployees = Array.from(allEmployeeNames).map((name) => ({
-                    name,
-                }));
-            }
-        }
-
-        // Create employee items
-        allEmployees.forEach((employee) => {
-            const employeeName = employee.name;
-            const isAssigned = currentAssignments.includes(employeeName);
-            const employeeItem = createEmployeeItem(employeeName, isAssigned);
-
-            if (isAssigned) {
-                assignedContainer.appendChild(employeeItem);
-            } else {
-                availableContainer.appendChild(employeeItem);
-            }
-        });
-
-        // Add empty state messages
-        if (availableContainer.children.length === 0) {
-            availableContainer.innerHTML =
-                '<div class="text-gray-500 text-center py-8">All employees are assigned</div>';
-        }
-        if (assignedContainer.children.length === 0) {
-            assignedContainer.innerHTML =
-                '<div class="text-gray-500 text-center py-8">No employees assigned</div>';
-        }
-    }
-
-    function createEmployeeItem(employeeName, isAssigned) {
-        const div = document.createElement("div");
-        div.className = `employee-item p-3 bg-white rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-all ${isAssigned ? "border-green-200" : "border-gray-200"}`;
-        div.draggable = true;
-        div.dataset.employeeName = employeeName;
-
-        div.innerHTML = `
-            <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
-                        ${employeeName.charAt(0).toUpperCase()}
-                    </div>
-                    <span class="ml-3 font-medium text-gray-700">${employeeName}</span>
-                </div>
-                <button onclick="toggleEmployeeAssignment('${employeeName}')" class="text-sm px-2 py-1 rounded ${isAssigned ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-green-100 text-green-600 hover:bg-green-200"} transition-colors">
-                    ${isAssigned ? "Remove" : "Assign"}
-                </button>
-            </div>
-        `;
-
-        // Add drag and drop functionality
-        div.addEventListener("dragstart", (e) => {
-            e.dataTransfer.setData("text/plain", employeeName);
-            div.classList.add("opacity-50");
-        });
-
-        div.addEventListener("dragend", () => {
-            div.classList.remove("opacity-50");
-        });
-
-        return div;
-    }
-
-    function toggleEmployeeAssignment(employeeName) {
-        const index = currentAssignments.indexOf(employeeName);
-        if (index > -1) {
-            currentAssignments.splice(index, 1);
-        } else {
-            currentAssignments.push(employeeName);
-        }
-        updateEmployeeModalLists();
-    }
-
-    function setupDropZones() {
-        const availableContainer = document.getElementById(
-            "available-employees",
-        );
-        const assignedContainer = document.getElementById("assigned-employees");
-
-        [availableContainer, assignedContainer].forEach((container) => {
-            container.addEventListener("dragover", (e) => {
-                e.preventDefault();
-                container.classList.add("bg-blue-50", "border-blue-300");
-            });
-
-            container.addEventListener("dragleave", () => {
-                container.classList.remove("bg-blue-50", "border-blue-300");
-            });
-
-            container.addEventListener("drop", (e) => {
-                e.preventDefault();
-                container.classList.remove("bg-blue-50", "border-blue-300");
-
-                const employeeName = e.dataTransfer.getData("text/plain");
-                const isAssignedContainer =
-                    container.id === "assigned-employees";
-
-                if (
-                    isAssignedContainer &&
-                    !currentAssignments.includes(employeeName)
-                ) {
-                    currentAssignments.push(employeeName);
-                    updateEmployeeModalLists();
-                } else if (
-                    !isAssignedContainer &&
-                    currentAssignments.includes(employeeName)
-                ) {
-                    const index = currentAssignments.indexOf(employeeName);
-                    currentAssignments.splice(index, 1);
-                    updateEmployeeModalLists();
-                }
-            });
-        });
-    }
-
-    function closeEmployeeModal() {
-        document
-            .getElementById("employee-assignment-modal")
-            .classList.add("hidden");
-        currentBlockId = null;
-        currentAssignments = [];
-    }
-
-    function saveEmployeeAssignments() {
-        if (!currentBlockId) return;
-
-        const data = {
-            block_id: currentBlockId,
-            employee_names: currentAssignments,
-        };
-
-        fetch("/api/work-block/assign-employees/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCookie("csrftoken"),
-            },
-            body: JSON.stringify(data),
-        })
-            .then((response) => response.json())
-            .then((data) => {
-                if (data.success) {
-                    // Update the block data
-                    blockData[currentBlockId].employees_assigned =
-                        currentAssignments;
-                    closeEmployeeModal();
-
-                    // Refresh the page to show updated assignments
-                    location.reload();
-                } else {
-                    alert(
-                        "Error: " +
-                            (data.error || "Failed to save assignments"),
-                    );
-                }
-            })
-            .catch((error) => {
-                console.error("Error saving assignments:", error);
-                alert("An error occurred while saving assignments");
-            });
-    }
-
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== "") {
-            const cookies = document.cookie.split(";");
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === name + "=") {
-                    cookieValue = decodeURIComponent(
-                        cookie.substring(name.length + 1),
-                    );
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
-    // Initialize drag and drop
-    document.addEventListener("DOMContentLoaded", () => {
-        setupDropZones();
-        loadEmployeesData();
-    });
-</script>

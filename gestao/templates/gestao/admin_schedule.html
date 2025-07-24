@@ -8,9 +8,19 @@
                 class="flex justify-between items-center mb-4 p-4 border-b"
                 id="nav-bar"
             >
-                <h1 class="text-2xl font-bold" id="schedule-title">
-                    Admin Schedule: {{ week_start_formatted }} - {{ week_end_formatted }}
-                </h1>
+                <div class="flex items-center space-x-3">
+                    <h1 class="text-2xl font-bold" id="schedule-title">
+                        Admin Schedule: {{ week_start_formatted }} - {{ week_end_formatted }}
+                    </h1>
+                    <button
+                        id="exit-zoom-btn"
+                        onclick="exitDayZoom()"
+                        class="hidden px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                        title="Exit zoom mode"
+                    >
+                        Exit Zoom
+                    </button>
+                </div>
                 <div class="flex items-center space-x-2">
                     <a
                         href="{% url 'admin_schedule_week' prev_week.year prev_week.week %}"
@@ -53,7 +63,8 @@
 
             <!-- Schedule grid -->
             <div
-                class="grid grid-cols-[100px_repeat(7,1fr)] p-4"
+                id="schedule-grid"
+                class="grid grid-cols-[100px_repeat(7,1fr)] p-4 transition-all duration-300 ease-in-out"
                 style="min-width: 0; position: relative"
             >
                 <!-- Time column -->
@@ -75,11 +86,14 @@
                 <!-- Day columns -->
                 {% for day in days %}
                 <div
-                    class="relative border-r border-gray-400"
+                    class="day-column relative border-r border-gray-400 transition-all duration-300 ease-in-out"
                     style="position: relative"
+                    data-day-index="{{ forloop.counter0 }}"
                 >
                     <div
-                        class="h-12 text-center font-semibold border-b border-gray-400 flex items-center justify-center"
+                        class="h-12 text-center font-semibold border-b border-gray-400 flex items-center justify-center cursor-pointer hover:bg-blue-50 transition-all duration-200 ease-in-out"
+                        onclick="toggleDayZoom({{ forloop.counter0 }})"
+                        title="Click to zoom into this day"
                     >
                         {{ day.date|date:"D, d M" }}
                     </div>
@@ -95,7 +109,7 @@
                     <!-- Work blocks -->
                     {% for block_data in day.blocks %}
                     <div
-                        class="work-block cursor-pointer absolute {% if block_data.block.archived %} bg-gray-300 border border-gray-500 {% else %} bg-blue-200 border border-blue-400 {% endif %} rounded px-2 py-1 text-xs overflow-hidden {% if block_data.block.archived %}hover:bg-gray-400{% else %}hover:bg-blue-300{% endif %} transition-colors"
+                        class="work-block cursor-pointer absolute {% if block_data.block.archived %}bg-gray-300 border border-gray-500{% else %}bg-blue-200 border border-blue-400{% endif %} rounded px-2 py-1 text-xs overflow-hidden {% if block_data.block.archived %}hover:bg-gray-400{% else %}hover:bg-blue-300{% endif %} transition-all duration-300 ease-in-out"
                         style="top: {{ block_data.top }}px; height: {{ block_data.height }}px; width: {{ block_data.width }}%; left: {{ block_data.left }}%; z-index: 10;"
                         onclick="showBlockInfo('{{ block_data.block.id }}', this, event)"
                         title="Click for details"
@@ -105,7 +119,7 @@
                         >
                             {{ block_data.block.name|default:"Work Block" }}
                             {% if block_data.block.archived %}
-                            <span class="text-gray-500">(Archived)</span>
+                            <span class="text-gray-500 italic">(Archived)</span>
                             {% endif %}
                         </p>
                         {% if block_data.height > 25 %}
@@ -507,8 +521,25 @@
         document.addEventListener("DOMContentLoaded", loadBlockData);
 
         // Load after HTMX updates content
-        document.addEventListener("htmx:afterSwap", function () {
+        document.addEventListener("htmx:afterSwap", function (event) {
             loadBlockData();
+
+            // Reinitialize zoom functionality if the target was schedule-inner
+            if (event.detail.target.id === "schedule-inner") {
+                // Reset zoom state
+                isZoomedIn = false;
+                zoomedDayIndex = null;
+                originalWorkBlockStyles.clear();
+
+                // Hide exit zoom button if it exists
+                const exitBtn = document.getElementById("exit-zoom-btn");
+                if (exitBtn) {
+                    exitBtn.classList.add("hidden");
+                }
+
+                console.log("Zoom functionality reinitialized after HTMX swap");
+            }
+
             // Add a small delay to ensure the navigation buttons are properly updated
             setTimeout(function () {
                 console.log(
@@ -910,6 +941,220 @@
                     setupDropZones();
                 }
             });
+
+        // Day zoom functionality
+        let isZoomedIn = false;
+        let zoomedDayIndex = null;
+        let originalWorkBlockStyles = new Map();
+
+        function toggleDayZoom(dayIndex) {
+            const grid = document.getElementById("schedule-grid");
+            const dayColumns = document.querySelectorAll(".day-column");
+
+            if (isZoomedIn && zoomedDayIndex === dayIndex) {
+                // Zoom out - restore original view
+                exitDayZoom();
+            } else {
+                // Zoom in to this day
+                enterDayZoom(dayIndex);
+            }
+        }
+
+        function enterDayZoom(dayIndex) {
+            const grid = document.getElementById("schedule-grid");
+            const dayColumns = document.querySelectorAll(".day-column");
+            const zoomedColumn = dayColumns[dayIndex];
+
+            // Store original work block styles for restoration
+            const workBlocks = zoomedColumn.querySelectorAll(".work-block");
+            workBlocks.forEach((block, blockIndex) => {
+                originalWorkBlockStyles.set(block, {
+                    width: block.style.width,
+                    left: block.style.left,
+                });
+            });
+
+            // Hide all other day columns with animation
+            dayColumns.forEach((column, index) => {
+                if (index !== dayIndex) {
+                    column.style.opacity = "0";
+                    column.style.transform = "scaleX(0)";
+                    setTimeout(() => {
+                        column.style.display = "none";
+                    }, 150);
+                } else {
+                    column.style.opacity = "1";
+                    column.style.transform = "scaleX(1)";
+                }
+            });
+
+            // Update grid to single column layout
+            setTimeout(() => {
+                grid.style.gridTemplateColumns = "100px 1fr";
+            }, 150);
+
+            // Recalculate work block positions for zoomed view
+            recalculateWorkBlockPositions(zoomedColumn);
+
+            // Update state
+            isZoomedIn = true;
+            zoomedDayIndex = dayIndex;
+
+            // Add visual indicator
+            const header = zoomedColumn.querySelector("div");
+            const originalContent = header.innerHTML;
+            header.style.backgroundColor = "#dbeafe";
+            header.innerHTML =
+                originalContent +
+                ' <span class="text-xs text-blue-600 ml-2">(Click to zoom out or press ESC)</span>';
+            header.dataset.originalContent = originalContent;
+
+            // Show exit zoom button
+            const exitBtn = document.getElementById("exit-zoom-btn");
+            exitBtn.classList.remove("hidden");
+
+            // Hide balloon if open
+            hideBlockInfo();
+
+            // Update title to show zoomed day
+            const scheduleTitle = document.getElementById("schedule-title");
+            const dayText = header.dataset.originalContent || originalContent;
+            scheduleTitle.innerHTML = `Admin Schedule - Zoomed: ${dayText.trim()}`;
+        }
+
+        function recalculateWorkBlockPositions(dayColumn) {
+            const workBlocks = Array.from(
+                dayColumn.querySelectorAll(".work-block"),
+            );
+
+            // Group blocks by time overlap for better side-by-side positioning
+            const timeGroups = [];
+
+            workBlocks.forEach((block) => {
+                const blockTop = parseInt(block.style.top);
+                const blockHeight = parseInt(block.style.height);
+                const blockBottom = blockTop + blockHeight;
+
+                // Find existing group that overlaps with this block
+                let foundGroup = timeGroups.find((group) => {
+                    return group.some((groupBlock) => {
+                        const groupTop = parseInt(groupBlock.style.top);
+                        const groupHeight = parseInt(groupBlock.style.height);
+                        const groupBottom = groupTop + groupHeight;
+
+                        // Check if blocks overlap in time
+                        return !(
+                            blockBottom <= groupTop || blockTop >= groupBottom
+                        );
+                    });
+                });
+
+                if (foundGroup) {
+                    foundGroup.push(block);
+                } else {
+                    timeGroups.push([block]);
+                }
+            });
+
+            // Position blocks within each time group
+            timeGroups.forEach((group) => {
+                const groupSize = group.length;
+                const blockWidth = Math.floor(98 / groupSize); // Leave some margin
+
+                group.forEach((block, index) => {
+                    block.style.width = `${blockWidth}%`;
+                    block.style.left = `${index * blockWidth + 1}%`;
+
+                    // Add more detailed styling for zoomed view
+                    block.style.minWidth = "120px";
+                    block.style.fontSize = "14px";
+                    block.style.padding = "8px";
+
+                    // Show more details when zoomed
+                    const blockElement = block;
+                    if (!blockElement.dataset.originalPadding) {
+                        blockElement.dataset.originalPadding =
+                            blockElement.style.padding;
+                        blockElement.dataset.originalFontSize =
+                            blockElement.style.fontSize;
+                    }
+                });
+            });
+        }
+
+        function exitDayZoom() {
+            const grid = document.getElementById("schedule-grid");
+            const dayColumns = document.querySelectorAll(".day-column");
+
+            // Restore original grid layout first
+            grid.style.gridTemplateColumns = "";
+
+            // Restore all day columns with animation
+            dayColumns.forEach((column, index) => {
+                column.style.display = "block";
+                column.style.opacity = "0";
+                column.style.transform = "scaleX(0)";
+
+                setTimeout(() => {
+                    column.style.opacity = "1";
+                    column.style.transform = "scaleX(1)";
+                }, 50 * index);
+            });
+
+            // Restore work block positions
+            if (zoomedDayIndex !== null) {
+                const zoomedColumn = dayColumns[zoomedDayIndex];
+                const workBlocks = zoomedColumn.querySelectorAll(".work-block");
+
+                workBlocks.forEach((block) => {
+                    const original = originalWorkBlockStyles.get(block);
+                    if (original) {
+                        block.style.width = original.width;
+                        block.style.left = original.left;
+
+                        // Restore original styling
+                        block.style.minWidth = "";
+                        block.style.fontSize = "";
+                        block.style.padding =
+                            block.dataset.originalPadding || "";
+                    }
+                });
+
+                // Remove visual indicator
+                const header = zoomedColumn.querySelector("div");
+                header.style.backgroundColor = "";
+                header.innerHTML =
+                    header.dataset.originalContent ||
+                    header.innerHTML.replace(
+                        / <span class="text-xs text-blue-600 ml-2">\([^)]+\)<\/span>/,
+                        "",
+                    );
+                delete header.dataset.originalContent;
+            }
+
+            // Clear stored styles
+            originalWorkBlockStyles.clear();
+
+            // Hide exit zoom button
+            const exitBtn = document.getElementById("exit-zoom-btn");
+            exitBtn.classList.add("hidden");
+
+            // Restore original title
+            const scheduleTitle = document.getElementById("schedule-title");
+            scheduleTitle.innerHTML =
+                "Admin Schedule: {{ week_start_formatted }} - {{ week_end_formatted }}";
+
+            // Reset state
+            isZoomedIn = false;
+            zoomedDayIndex = null;
+        }
+
+        // Add keyboard shortcut to exit zoom
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && isZoomedIn) {
+                exitDayZoom();
+            }
+        });
 
         // Initialize on page load
         document.addEventListener("DOMContentLoaded", () => {
