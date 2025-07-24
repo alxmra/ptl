@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import WorkBlock, Employee, EmployeeWorkAssignment
+from .models import WorkBlock, Employee, EmployeeWorkAssignment, Client
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.contrib.auth import authenticate, login, logout
@@ -50,9 +50,8 @@ def index(request, year=None, week=None):
     start_date = datetime.fromisocalendar(year, week, 1).date()
     end_date = start_date + timedelta(days=6)
 
-    # Get all work blocks for the week
+    # Get all work blocks for the week (including archived ones for admin view)
     work_blocks = WorkBlock.objects.filter(
-        archived=False,
         year=year,
         month__in=[start_date.month, end_date.month]
     ).prefetch_related('employees_assigned', 'client')
@@ -1122,5 +1121,149 @@ def api_assign_employees(request):
         return JsonResponse({'success': False, 'error': 'Work block not found'}, status=404)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+def api_delete_work_block(request, block_id):
+    """API endpoint to delete a work block"""
+    if request.method != 'DELETE':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        work_block = WorkBlock.objects.get(id=block_id)
+        work_block.delete()
+        return JsonResponse({'success': True, 'message': 'Work block deleted successfully'})
+    except WorkBlock.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Work block not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+def api_toggle_archive_work_block(request, block_id):
+    """API endpoint to archive/unarchive a work block"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        work_block = WorkBlock.objects.get(id=block_id)
+        work_block.archived = not work_block.archived
+        work_block.save()
+
+        status = 'archived' if work_block.archived else 'unarchived'
+        return JsonResponse({
+            'success': True,
+            'message': f'Work block {status} successfully',
+            'archived': work_block.archived
+        })
+    except WorkBlock.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Work block not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+def api_edit_work_block(request, block_id):
+    """API endpoint to edit a work block"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        work_block = WorkBlock.objects.get(id=block_id)
+
+        # Update basic fields
+        work_block.name = data.get('name', work_block.name)
+        work_block.localization = data.get('localization', work_block.localization)
+        work_block.start_time = data.get('start_time', work_block.start_time)
+        work_block.end_time = data.get('end_time', work_block.end_time)
+        work_block.duration = data.get('duration', work_block.duration)
+        work_block.hourly_value = data.get('hourly_value', work_block.hourly_value)
+
+        # Update client if provided
+        client_name = data.get('client')
+        if client_name:
+            try:
+                client = Client.objects.get(name=client_name)
+                work_block.client = client
+            except Client.DoesNotExist:
+                return JsonResponse({'success': False, 'error': f'Client "{client_name}" not found'}, status=400)
+
+        work_block.save()
+
+        # Handle employee assignments and completions
+        employee_data = data.get('employees', [])
+
+        # Clear existing assignments
+        EmployeeWorkAssignment.objects.filter(work_block=work_block).delete()
+
+        # Create new assignments
+        for emp_data in employee_data:
+            try:
+                employee = Employee.objects.get(name=emp_data['name'])
+                EmployeeWorkAssignment.objects.create(
+                    employee=employee,
+                    work_block=work_block,
+                    duration=emp_data.get('duration', work_block.duration),
+                    is_completed=emp_data.get('is_completed', False)
+                )
+            except Employee.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Employee "{emp_data["name"]}" not found'
+                }, status=400)
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Work block updated successfully'
+        })
+
+    except WorkBlock.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Work block not found'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+def api_get_work_block_details(request, block_id):
+    """API endpoint to get detailed work block information for editing"""
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        work_block = WorkBlock.objects.get(id=block_id)
+
+        # Get all clients for dropdown
+        clients = list(Client.objects.values_list('name', flat=True))
+
+        # Get current assignments
+        assignments = EmployeeWorkAssignment.objects.filter(work_block=work_block)
+        employee_assignments = []
+        for assignment in assignments:
+            employee_assignments.append({
+                'name': assignment.employee.name,
+                'duration': float(assignment.duration),
+                'is_completed': assignment.is_completed
+            })
+
+        return JsonResponse({
+            'success': True,
+            'work_block': {
+                'id': work_block.id,
+                'name': work_block.name,
+                'localization': work_block.localization,
+                'client': work_block.client.name if work_block.client else '',
+                'start_time': work_block.start_time.strftime('%H:%M'),
+                'end_time': work_block.end_time.strftime('%H:%M'),
+                'duration': float(work_block.duration),
+                'hourly_value': float(work_block.hourly_value),
+                'archived': work_block.archived,
+                'employees': employee_assignments
+            },
+            'clients': clients
+        })
+
+    except WorkBlock.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Work block not found'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

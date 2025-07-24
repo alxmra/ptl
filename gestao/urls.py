@@ -18,4 +18,8 @@ urlpatterns = [
     path('api/employees/', views.api_employees, name='api_employees'),
     path('api/work-block/<int:block_id>/assignments/', views.api_work_block_assignments, name='api_work_block_assignments'),
     path('api/work-block/assign-employees/', views.api_assign_employees, name='api_assign_employees'),
+    path('api/work-block/<int:block_id>/delete/', views.api_delete_work_block, name='api_delete_work_block'),
+    path('api/work-block/<int:block_id>/toggle-archive/', views.api_toggle_archive_work_block, name='api_toggle_archive_work_block'),
+    path('api/work-block/<int:block_id>/edit/', views.api_edit_work_block, name='api_edit_work_block'),
+    path('api/work-block/<int:block_id>/details/', views.api_get_work_block_details, name='api_get_work_block_details'),
 ]

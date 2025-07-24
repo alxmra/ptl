@@ -9,8 +9,7 @@
                 id="nav-bar"
             >
                 <h1 class="text-2xl font-bold" id="schedule-title">
-                    Admin Schedule: {{ week_start_formatted }} - {{
-                    week_end_formatted }}
+                    Admin Schedule: {{ week_start_formatted }} - {{ week_end_formatted }}
                 </h1>
                 <div class="flex items-center space-x-2">
                     <a
@@ -96,16 +95,23 @@
                     <!-- Work blocks -->
                     {% for block_data in day.blocks %}
                     <div
-                        class="work-block cursor-pointer absolute bg-blue-200 border border-blue-400 rounded px-2 py-1 text-xs overflow-hidden hover:bg-blue-300 transition-colors"
+                        class="work-block cursor-pointer absolute {% if block_data.block.archived %} bg-gray-300 border border-gray-500 {% else %} bg-blue-200 border border-blue-400 {% endif %} rounded px-2 py-1 text-xs overflow-hidden {% if block_data.block.archived %}hover:bg-gray-400{% else %}hover:bg-blue-300{% endif %} transition-colors"
                         style="top: {{ block_data.top }}px; height: {{ block_data.height }}px; width: {{ block_data.width }}%; left: {{ block_data.left }}%; z-index: 10;"
                         onclick="showBlockInfo('{{ block_data.block.id }}', this, event)"
                         title="Click for details"
                     >
-                        <p class="font-semibold text-blue-800 break-words">
+                        <p
+                            class="font-semibold {% if block_data.block.archived %}text-gray-700{% else %}text-blue-800{% endif %} break-words"
+                        >
                             {{ block_data.block.name|default:"Work Block" }}
+                            {% if block_data.block.archived %}
+                            <span class="text-gray-500">(Archived)</span>
+                            {% endif %}
                         </p>
                         {% if block_data.height > 25 %}
-                        <p class="text-blue-600 break-words">
+                        <p
+                            class="{% if block_data.block.archived %}text-gray-600{% else %}text-blue-600{% endif %} break-words"
+                        >
                             {{ block_data.block.localization|default:"" }}
                         </p>
                         {% endif %}
@@ -266,6 +272,203 @@
         </div>
     </div>
 
+    <!-- Edit Work Block Modal -->
+    <div
+        id="edit-work-block-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center"
+    >
+        <div
+            class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+        >
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Edit Work Block</h2>
+                <button
+                    onclick="closeEditModal()"
+                    class="text-gray-400 hover:text-gray-600"
+                >
+                    <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                        ></path>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="edit-work-block-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Name</label
+                        >
+                        <input
+                            type="text"
+                            id="edit-name"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Location</label
+                        >
+                        <input
+                            type="text"
+                            id="edit-localization"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Client</label
+                        >
+                        <select
+                            id="edit-client"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Select Client</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Duration (hours)</label
+                        >
+                        <input
+                            type="number"
+                            step="0.25"
+                            id="edit-duration"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Start Time</label
+                        >
+                        <input
+                            type="time"
+                            id="edit-start-time"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >End Time</label
+                        >
+                        <input
+                            type="time"
+                            id="edit-end-time"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Hourly Value (€)</label
+                        >
+                        <input
+                            type="number"
+                            step="0.01"
+                            id="edit-hourly-value"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                        Employee Assignments
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Available Employees for Edit -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4
+                                class="font-semibold text-gray-700 mb-3 flex items-center"
+                            >
+                                <svg
+                                    class="w-5 h-5 mr-2 text-blue-500"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
+                                    ></path>
+                                </svg>
+                                Available Employees
+                            </h4>
+                            <div
+                                id="edit-available-employees"
+                                class="space-y-2 min-h-[200px] max-h-[300px] overflow-y-auto"
+                            >
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Assigned Employees for Edit -->
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <h4
+                                class="font-semibold text-gray-700 mb-3 flex items-center"
+                            >
+                                <svg
+                                    class="w-5 h-5 mr-2 text-green-500"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    ></path>
+                                </svg>
+                                Assigned Employees
+                            </h4>
+                            <div
+                                id="edit-assigned-employees"
+                                class="space-y-2 min-h-[200px] max-h-[300px] overflow-y-auto"
+                            >
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button
+                        type="button"
+                        onclick="closeEditModal()"
+                        class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onclick="saveWorkBlockEdit()"
+                        class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                    >
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         var blockData = {};
         var currentBalloon = null;
@@ -351,9 +554,20 @@
                 <div><strong>Concluded:</strong> ${employeesConcluded}</div>
                 <div><strong>Constant:</strong> ${block.constant ? "Yes" : "No"}</div>
                 ${block.archived ? '<div class="text-red-500"><strong>Archived</strong></div>' : ""}
-                <button onclick="openEmployeeModal('${blockId}')" class="w-full mt-3 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors">
-                    Assign Employees
-                </button>
+                <div class="mt-3 space-y-2">
+                    <button onclick="openEmployeeModal('${blockId}')" class="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors">
+                        Assign Employees
+                    </button>
+                    <button onclick="openEditModal('${blockId}')" class="w-full px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded text-sm font-medium transition-colors">
+                        Edit Work Block
+                    </button>
+                    <button onclick="toggleArchiveBlock('${blockId}')" class="w-full px-3 py-2 ${block.archived ? "bg-yellow-500 hover:bg-yellow-600" : "bg-orange-500 hover:bg-orange-600"} text-white rounded text-sm font-medium transition-colors">
+                        ${block.archived ? "Unarchive" : "Archive"} Block
+                    </button>
+                    <button onclick="deleteBlock('${blockId}')" class="w-full px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium transition-colors">
+                        Delete Block
+                    </button>
+                </div>
             `;
 
             // Show balloon first to get proper dimensions
@@ -702,6 +916,315 @@
             setupDropZones();
             loadEmployeesData();
         });
+
+        // New functions for work block management
+        let currentEditBlockId = null;
+        let editBlockData = null;
+        let editAllEmployees = [];
+        let editCurrentAssignments = [];
+
+        function deleteBlock(blockId) {
+            if (
+                !confirm(
+                    "Are you sure you want to delete this work block? This action cannot be undone.",
+                )
+            ) {
+                return;
+            }
+
+            fetch(`/api/work-block/${blockId}/delete/`, {
+                method: "DELETE",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                },
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        hideBlockInfo();
+                        // Reload the schedule
+                        location.reload();
+                    } else {
+                        alert("Error deleting work block: " + data.error);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert("Error deleting work block");
+                });
+        }
+
+        function toggleArchiveBlock(blockId) {
+            const block = blockData[blockId];
+            const action = block.archived ? "unarchive" : "archive";
+
+            if (
+                !confirm(`Are you sure you want to ${action} this work block?`)
+            ) {
+                return;
+            }
+
+            fetch(`/api/work-block/${blockId}/toggle-archive/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                    "Content-Type": "application/json",
+                },
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        hideBlockInfo();
+                        // Reload the schedule
+                        location.reload();
+                    } else {
+                        alert("Error archiving work block: " + data.error);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert("Error archiving work block");
+                });
+        }
+
+        function openEditModal(blockId) {
+            currentEditBlockId = blockId;
+
+            // Load work block details
+            fetch(`/api/work-block/${blockId}/details/`)
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        editBlockData = data.work_block;
+
+                        // Populate form fields
+                        document.getElementById("edit-name").value =
+                            editBlockData.name;
+                        document.getElementById("edit-localization").value =
+                            editBlockData.localization;
+                        document.getElementById("edit-start-time").value =
+                            editBlockData.start_time;
+                        document.getElementById("edit-end-time").value =
+                            editBlockData.end_time;
+                        document.getElementById("edit-duration").value =
+                            editBlockData.duration;
+                        document.getElementById("edit-hourly-value").value =
+                            editBlockData.hourly_value;
+
+                        // Populate client dropdown
+                        const clientSelect =
+                            document.getElementById("edit-client");
+                        clientSelect.innerHTML =
+                            '<option value="">Select Client</option>';
+                        data.clients.forEach((client) => {
+                            const option = document.createElement("option");
+                            option.value = client;
+                            option.textContent = client;
+                            if (client === editBlockData.client) {
+                                option.selected = true;
+                            }
+                            clientSelect.appendChild(option);
+                        });
+
+                        // Set up employee assignments
+                        editCurrentAssignments = editBlockData.employees.map(
+                            (emp) => ({
+                                name: emp.name,
+                                duration: emp.duration,
+                                is_completed: emp.is_completed,
+                            }),
+                        );
+
+                        updateEditEmployeeModalLists();
+                        document
+                            .getElementById("edit-work-block-modal")
+                            .classList.remove("hidden");
+                    } else {
+                        alert(
+                            "Error loading work block details: " + data.error,
+                        );
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert("Error loading work block details");
+                });
+
+            hideBlockInfo();
+        }
+
+        function closeEditModal() {
+            document
+                .getElementById("edit-work-block-modal")
+                .classList.add("hidden");
+            currentEditBlockId = null;
+            editBlockData = null;
+            editCurrentAssignments = [];
+        }
+
+        function updateEditEmployeeModalLists() {
+            const availableContainer = document.getElementById(
+                "edit-available-employees",
+            );
+            const assignedContainer = document.getElementById(
+                "edit-assigned-employees",
+            );
+
+            // Clear containers
+            availableContainer.innerHTML = "";
+            assignedContainer.innerHTML = "";
+
+            // Get assigned employee names
+            const assignedNames = editCurrentAssignments.map((emp) => emp.name);
+
+            // Add available employees
+            allEmployees.forEach((employee) => {
+                if (!assignedNames.includes(employee.name)) {
+                    const item = createEditEmployeeItem(employee.name, false);
+                    availableContainer.appendChild(item);
+                }
+            });
+
+            // Add assigned employees
+            editCurrentAssignments.forEach((assignment) => {
+                const item = createEditEmployeeItem(
+                    assignment.name,
+                    true,
+                    assignment,
+                );
+                assignedContainer.appendChild(item);
+            });
+        }
+
+        function createEditEmployeeItem(
+            employeeName,
+            isAssigned,
+            assignment = null,
+        ) {
+            const div = document.createElement("div");
+            div.className = `p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors`;
+
+            if (isAssigned && assignment) {
+                div.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-medium text-gray-800">${employeeName}</span>
+                        <button onclick="toggleEditEmployeeAssignment('${employeeName}')" class="text-red-500 hover:text-red-700">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="mt-2 space-y-2">
+                        <div>
+                            <label class="block text-xs text-gray-500">Duration (hours)</label>
+                            <input type="number" step="0.25" value="${assignment.duration}"
+                                   onchange="updateEditEmployeeDuration('${employeeName}', this.value)"
+                                   class="w-full px-2 py-1 text-sm border border-gray-300 rounded">
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" ${assignment.is_completed ? "checked" : ""}
+                                   onchange="updateEditEmployeeCompletion('${employeeName}', this.checked)"
+                                   class="mr-2">
+                            <label class="text-xs text-gray-500">Completed</label>
+                        </div>
+                    </div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-medium text-gray-800">${employeeName}</span>
+                        <button onclick="toggleEditEmployeeAssignment('${employeeName}')" class="text-green-500 hover:text-green-700">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            }
+
+            return div;
+        }
+
+        function toggleEditEmployeeAssignment(employeeName) {
+            const assignedIndex = editCurrentAssignments.findIndex(
+                (emp) => emp.name === employeeName,
+            );
+
+            if (assignedIndex > -1) {
+                // Remove from assigned
+                editCurrentAssignments.splice(assignedIndex, 1);
+            } else {
+                // Add to assigned
+                editCurrentAssignments.push({
+                    name: employeeName,
+                    duration: editBlockData.duration,
+                    is_completed: false,
+                });
+            }
+
+            updateEditEmployeeModalLists();
+        }
+
+        function updateEditEmployeeDuration(employeeName, duration) {
+            const assignment = editCurrentAssignments.find(
+                (emp) => emp.name === employeeName,
+            );
+            if (assignment) {
+                assignment.duration = parseFloat(duration);
+            }
+        }
+
+        function updateEditEmployeeCompletion(employeeName, isCompleted) {
+            const assignment = editCurrentAssignments.find(
+                (emp) => emp.name === employeeName,
+            );
+            if (assignment) {
+                assignment.is_completed = isCompleted;
+            }
+        }
+
+        function saveWorkBlockEdit() {
+            if (!currentEditBlockId) return;
+
+            const formData = {
+                name: document.getElementById("edit-name").value,
+                localization:
+                    document.getElementById("edit-localization").value,
+                client: document.getElementById("edit-client").value,
+                start_time: document.getElementById("edit-start-time").value,
+                end_time: document.getElementById("edit-end-time").value,
+                duration: parseFloat(
+                    document.getElementById("edit-duration").value,
+                ),
+                hourly_value: parseFloat(
+                    document.getElementById("edit-hourly-value").value,
+                ),
+                employees: editCurrentAssignments,
+            };
+
+            fetch(`/api/work-block/${currentEditBlockId}/edit/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(formData),
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        closeEditModal();
+                        // Reload the schedule
+                        location.reload();
+                    } else {
+                        alert("Error updating work block: " + data.error);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert("Error updating work block");
+                });
+        }
     </script>
 </div>
 {% endblock %}
