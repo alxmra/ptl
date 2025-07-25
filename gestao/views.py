@@ -506,8 +506,8 @@ def admin_statistics(request, year=None, month=None):
         # Hours worked: Only completed tasks (is_completed=True)
         total_hours_worked = sum(assignment.duration for assignment in completed_assignments)
 
-        # Value earned: Only based on completed hours × hourly rate
-        total_value_earned = sum(assignment.duration * assignment.work_block.hourly_value for assignment in completed_assignments)
+        # Value earned: Only based on completed hours × employee rate (contract or workblock) and only if receives_payment=True
+        total_value_earned = sum(assignment.get_employee_payment() for assignment in completed_assignments)
 
         # Get bonuses and penalties for this employee in this month
         bonuses_penalties = BonusPenalty.objects.filter(
@@ -581,7 +581,7 @@ def admin_statistics(request, year=None, month=None):
         ).select_related('work_block', 'employee')
 
         total_hours = sum(assignment.duration for assignment in client_completed_assignments)
-        total_value = sum(assignment.duration * assignment.work_block.hourly_value for assignment in client_completed_assignments)
+        total_value = sum(assignment.get_client_cost() for assignment in client_completed_assignments)
         unique_workers = len(set(assignment.employee for assignment in client_completed_assignments))
 
         # Group assignments by day for detailed view
@@ -627,7 +627,7 @@ def admin_statistics(request, year=None, month=None):
         ).select_related('work_block', 'employee')
 
         total_hours = sum(assignment.duration for assignment in outros_completed_assignments)
-        total_value = sum(assignment.duration * assignment.work_block.hourly_value for assignment in outros_completed_assignments)
+        total_value = sum(assignment.get_client_cost() for assignment in outros_completed_assignments)
         unique_workers = len(set(assignment.employee for assignment in outros_completed_assignments))
 
         # Group assignments by day for detailed view
@@ -1216,7 +1216,8 @@ def api_edit_work_block(request, block_id):
                     employee=employee,
                     work_block=work_block,
                     duration=emp_data.get('duration', work_block.duration),
-                    is_completed=emp_data.get('is_completed', False)
+                    is_completed=emp_data.get('is_completed', False),
+                    receives_payment=emp_data.get('receives_payment', True)
                 )
             except Employee.DoesNotExist:
                 return JsonResponse({
@@ -1255,7 +1256,10 @@ def api_get_work_block_details(request, block_id):
             employee_assignments.append({
                 'name': assignment.employee.name,
                 'duration': float(assignment.duration),
-                'is_completed': assignment.is_completed
+                'is_completed': assignment.is_completed,
+                'receives_payment': assignment.receives_payment,
+                'contract_hourly_rate': float(assignment.employee.contract_hourly_rate) if assignment.employee.contract_hourly_rate else None,
+                'has_contract': assignment.employee.has_contract
             })
 
         return JsonResponse({
@@ -1417,5 +1421,35 @@ def api_delete_bonus_penalty(request, bonus_penalty_id):
             'message': f'{type_name} of €{amount:.2f} for {employee_name} has been deleted'
         })
 
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+@csrf_exempt
+def api_toggle_assignment_payment(request, assignment_id):
+    """Toggle payment status for an employee work assignment"""
+    try:
+        data = json.loads(request.body)
+        receives_payment = data.get('receives_payment', True)
+
+        try:
+            assignment = EmployeeWorkAssignment.objects.get(id=assignment_id)
+        except EmployeeWorkAssignment.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Assignment not found'}, status=404)
+
+        # Update payment status
+        assignment.receives_payment = receives_payment
+        assignment.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Payment status updated for {assignment.employee.name}'
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

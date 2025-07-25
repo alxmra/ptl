@@ -25,4 +25,5 @@ urlpatterns = [
     path('api/bonus-penalty/add/', views.api_add_bonus_penalty, name='api_add_bonus_penalty'),
     path('api/employee/<int:employee_id>/bonuses-penalties/', views.api_get_employee_bonuses_penalties, name='api_get_employee_bonuses_penalties'),
     path('api/bonus-penalty/<int:bonus_penalty_id>/delete/', views.api_delete_bonus_penalty, name='api_delete_bonus_penalty'),
+    path('api/assignment/<int:assignment_id>/toggle-payment/', views.api_toggle_assignment_payment, name='api_toggle_assignment_payment'),
 ]

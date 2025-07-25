@@ -1435,6 +1435,9 @@
                                 name: emp.name,
                                 duration: emp.duration,
                                 is_completed: emp.is_completed,
+                                receives_payment: emp.receives_payment,
+                                contract_hourly_rate: emp.contract_hourly_rate,
+                                has_contract: emp.has_contract,
                             }),
                         );
 
@@ -1508,6 +1511,10 @@
             div.className = `p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors`;
 
             if (isAssigned && assignment) {
+                const contractInfo = assignment.has_contract
+                    ? `<div class="text-xs text-blue-600 mb-1">Contract: €${assignment.contract_hourly_rate}/h</div>`
+                    : "";
+
                 div.innerHTML = `
                     <div class="flex items-center justify-between">
                         <span class="font-medium text-gray-800">${employeeName}</span>
@@ -1517,6 +1524,7 @@
                             </svg>
                         </button>
                     </div>
+                    ${contractInfo}
                     <div class="mt-2 space-y-2">
                         <div>
                             <label class="block text-xs text-gray-500">Duration (HH:MM)</label>
@@ -1531,6 +1539,12 @@
                                    onchange="updateEditEmployeeCompletion('${employeeName}', this.checked)"
                                    class="mr-2">
                             <label class="text-xs text-gray-500">Completed</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" ${assignment.receives_payment ? "checked" : ""}
+                                   onchange="updateEditEmployeePayment('${employeeName}', this.checked)"
+                                   class="mr-2">
+                            <label class="text-xs text-gray-500">Receives Payment</label>
                         </div>
                     </div>
                 `;
@@ -1594,10 +1608,19 @@
 
         function updateEditEmployeeCompletion(employeeName, isCompleted) {
             const assignment = editCurrentAssignments.find(
-                (emp) => emp.name === employeeName,
+                (a) => a.name === employeeName,
             );
             if (assignment) {
                 assignment.is_completed = isCompleted;
+            }
+        }
+
+        function updateEditEmployeePayment(employeeName, receivesPayment) {
+            const assignment = editCurrentAssignments.find(
+                (a) => a.name === employeeName,
+            );
+            if (assignment) {
+                assignment.receives_payment = receivesPayment;
             }
         }
 

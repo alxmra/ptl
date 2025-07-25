@@ -126,7 +126,7 @@
                                     </div>
                                     {% if stat.bonus_penalty_total != 0 %}
                                     <div class="text-xs text-gray-500">
-                                        Base: €{{ stat.total_value_earned|floatformat:2 }}
+                                        Base: €{{  stat.total_value_earned|floatformat:2  }}
                                         {% if stat.bonus_penalty_total > 0 %}
                                         <span class="text-green-600"
                                             >+€{{ stat.bonus_penalty_total|floatformat:2  }}</span
@@ -172,7 +172,7 @@
                                 >
                                     <div class="max-h-60 overflow-y-auto">
                                         <h4 class="font-semibold mb-2">
-                                            Daily Work Details for {{ stat.employee.name }}:
+                                            Daily Work Details for {{  stat.employee.name  }}:
                                         </h4>
                                         {% for day, day_data in stat.daily_work  %}
                                         <div
@@ -188,7 +188,36 @@
                                                 <strong
                                                     >{{ assignment.work_block.name|default:"Work Block"  }}</strong
                                                 >
-                                                ({{ assignment.work_block.client.name|default:"Outros"  }}) - {{ assignment.duration|duration_format  }} @ €{{ assignment.work_block.hourly_value|floatformat:2  }}/h{% if assignment.work_block.localization %} - {{ assignment.work_block.localization  }}{% endif %}
+                                                ({{ assignment.work_block.client.name|default:"Outros"  }}) - {{ assignment.duration|duration_format  }}{% if assignment.work_block.localization %} - {{ assignment.work_block.localization  }}{% endif %}
+                                                <br />
+                                                <span class="text-gray-600">
+                                                    Client rate: €{{ assignment.work_block.hourly_value|floatformat:2  }}/h {% if assignment.employee.has_contract %} | Employee rate: €{{  assignment.employee.contract_hourly_rate|floatformat:2  }}/h (Contract) {% else %} | Employee rate: €{{ assignment.work_block.hourly_value|floatformat:2   }}/h {% endif %}
+                                                </span>
+                                                <br />
+                                                <div
+                                                    class="flex items-center space-x-2 mt-1"
+                                                >
+                                                    <label
+                                                        class="flex items-center text-xs"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            {%
+                                                            if
+                                                            assignment.receives_payment
+                                                            %}checked{%
+                                                            endif
+                                                            %}
+                                                            onchange="toggleAssignmentPayment({{ assignment.id }}, this.checked)"
+                                                            class="mr-1 text-xs"
+                                                        />
+                                                        <span
+                                                            class="{% if assignment.receives_payment %}text-green-600{% else %}text-red-600{% endif %}"
+                                                        >
+                                                            {% if assignment.receives_payment %}Receives Payment{% else %}NO PAYMENT{% endif %}
+                                                        </span>
+                                                    </label>
+                                                </div>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -242,7 +271,7 @@
                                     Client
                                 </th>
                                 <th class="px-4 py-2 text-left border-b">
-                                    Hours Worked (All employees summed) ({{ month_name }})
+                                    Hours Worked (All employees summed) ({{  month_name  }})
                                 </th>
                                 <th class="px-4 py-2 text-left border-b">
                                     Total Value
@@ -289,7 +318,7 @@
                                 >
                                     <div class="max-h-60 overflow-y-auto">
                                         <h4 class="font-semibold mb-2">
-                                            Daily Work Details for {{ stat.client.name }}:
+                                            Daily Work Details for {{  stat.client.name  }}:
                                         </h4>
                                         {% for day, day_data in stat.daily_work  %}
                                         <div
@@ -298,12 +327,12 @@
                                             <h5
                                                 class="font-medium text-sm mb-1"
                                             >
-                                                {{ day_data.date|date:"l, F d" }}
+                                                {{  day_data.date|date:"l, F d"  }}
                                             </h5>
                                             {% for assignment in day_data.assignments  %}
                                             <div class="text-xs ml-4 mb-1">
                                                 <strong
-                                                    >{{ assignment.employee.name }}</strong
+                                                    >{{  assignment.employee.name  }}</strong
                                                 >: {{ assignment.work_block.name|default:"Work Block"  }} ({{ assignment.work_block.start_time|time:"H:i"  }}-{{ assignment.work_block.end_time|time:"H:i"  }}) - {{ assignment.duration|duration_format  }} @ €{{ assignment.work_block.hourly_value|floatformat:2  }}/h{% if assignment.work_block.localization %} - {{ assignment.work_block.localization  }}{% endif %}
                                             </div>
                                             {% endfor %}
@@ -480,8 +509,7 @@
 
 <script>
     // Chart data - populated by Django
-    const employeeChartData = {{ employee_chart_data|safe }};
-    const clientChartData = {{ client_chart_data|safe }};
+    const employeeChartData = {{  employee_chart_data|safe }}; const clientChartData = {{ client_chart_data|safe  }};
 
     // Get days in current month
     const daysInMonth = new Date({{ year }}, {{ month }}, 0).getDate();
@@ -909,6 +937,36 @@
             }
         }
         return cookieValue;
+    }
+
+    function toggleAssignmentPayment(assignmentId, receivesPayment) {
+        fetch(`/api/assignment/${assignmentId}/toggle-payment/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                receives_payment: receivesPayment
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                // Reload the page to update all calculations
+                window.location.reload();
+            } else {
+                alert('Error updating payment status: ' + result.error);
+                // Revert checkbox state
+                event.target.checked = !receivesPayment;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while updating payment status');
+            // Revert checkbox state
+            event.target.checked = !receivesPayment;
+        });
     }
 
     function deleteBonusPenalty(bonusPenaltyId, typeLabel, amount, employeeName) {

@@ -14,9 +14,14 @@ class Client(models.Model):
 class Employee(models.Model):
     name = models.CharField(max_length=100)
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    contract_hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Hourly rate for contracted employees (overrides workblock rates)")
 
     def __str__(self):
         return self.name
+
+    @property
+    def has_contract(self):
+        return self.contract_hourly_rate is not None
 
 
 class EmployeeWorkAssignment(models.Model):
@@ -26,12 +31,29 @@ class EmployeeWorkAssignment(models.Model):
     is_completed = models.BooleanField(default=False)
     assigned_date = models.DateTimeField(auto_now_add=True)
     completed_date = models.DateTimeField(null=True, blank=True)
+    receives_payment = models.BooleanField(default=True, help_text="Whether this employee receives payment for this workblock")
 
     class Meta:
         unique_together = ['employee', 'work_block']
 
     def __str__(self):
         return f"{self.employee.name} - {self.work_block} - {self.duration}h"
+
+    def get_employee_hourly_rate(self):
+        """Get the hourly rate for this employee - contract rate if available, otherwise workblock rate"""
+        if self.employee.has_contract:
+            return self.employee.contract_hourly_rate
+        return self.work_block.hourly_value
+
+    def get_employee_payment(self):
+        """Get the total payment for this employee for this workblock"""
+        if not self.receives_payment:
+            return 0
+        return self.duration * self.get_employee_hourly_rate()
+
+    def get_client_cost(self):
+        """Get the cost charged to the client for this employee's work"""
+        return self.duration * self.work_block.hourly_value
 
 
 

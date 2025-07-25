@@ -7,7 +7,7 @@ import calendar
 class EmployeeWorkAssignmentInline(admin.TabularInline):
     model = EmployeeWorkAssignment
     extra = 0
-    fields = ('employee', 'duration', 'is_completed', 'completed_date')
+    fields = ('employee', 'duration', 'is_completed', 'completed_date', 'receives_payment')
     readonly_fields = ('completed_date',)
 
 class WorkBlockAdmin(admin.ModelAdmin):
@@ -64,7 +64,11 @@ class BonusPenaltyAdmin(admin.ModelAdmin):
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
 
-admin.site.register(Employee)
+class EmployeeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'contract_hourly_rate', 'has_contract')
+    fields = ('name', 'user', 'contract_hourly_rate')
+
+admin.site.register(Employee, EmployeeAdmin)
 admin.site.register(WorkBlock, WorkBlockAdmin)
 admin.site.register(Client)
 admin.site.register(EmployeeWorkAssignment)
