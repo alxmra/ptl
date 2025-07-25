@@ -218,20 +218,14 @@
                                                         >
                                                             <input
                                                                 type="checkbox"
-                                                                {%
-                                                                if
-                                                                assignment.receives_payment
-                                                                %}checked{%
-                                                                endif
-                                                                %}
+                                                                {% if assignment.receives_payment %}checked{% endif %}
                                                                 onchange="toggleAssignmentPayment({{ assignment.id }}, this.checked)"
                                                                 class="mr-1 text-xs"
                                                             />
                                                             <span
                                                                 class="{% if assignment.receives_payment %}text-green-600{% else %}text-red-600{% endif %}"
                                                             >
-                                                                {% if assignment.receives_payment %}Receives
-                                                                Payment{% else %}NO PAYMENT{% endif %}
+                                                                {% if assignment.receives_payment %}Receives Payment{% else %}NO PAYMENT{% endif %}
                                                             </span>
                                                         </label>
                                                     </div>
