@@ -26,4 +26,5 @@ urlpatterns = [
     path('api/employee/<int:employee_id>/bonuses-penalties/', views.api_get_employee_bonuses_penalties, name='api_get_employee_bonuses_penalties'),
     path('api/bonus-penalty/<int:bonus_penalty_id>/delete/', views.api_delete_bonus_penalty, name='api_delete_bonus_penalty'),
     path('api/assignment/<int:assignment_id>/toggle-payment/', views.api_toggle_assignment_payment, name='api_toggle_assignment_payment'),
+    path('api/assignment/<int:assignment_id>/update-hourly-rate/', views.api_update_assignment_hourly_rate, name='api_update_assignment_hourly_rate'),
 ]

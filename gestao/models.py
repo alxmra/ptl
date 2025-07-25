@@ -32,6 +32,7 @@ class EmployeeWorkAssignment(models.Model):
     assigned_date = models.DateTimeField(auto_now_add=True)
     completed_date = models.DateTimeField(null=True, blank=True)
     receives_payment = models.BooleanField(default=True, help_text="Whether this employee receives payment for this workblock")
+    hourly_rate_override = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Override hourly rate for this specific assignment")
 
     class Meta:
         unique_together = ['employee', 'work_block']
@@ -40,7 +41,9 @@ class EmployeeWorkAssignment(models.Model):
         return f"{self.employee.name} - {self.work_block} - {self.duration}h"
 
     def get_employee_hourly_rate(self):
-        """Get the hourly rate for this employee - contract rate if available, otherwise workblock rate"""
+        """Get the hourly rate for this employee - override rate, contract rate, or workblock rate"""
+        if self.hourly_rate_override is not None:
+            return self.hourly_rate_override
         if self.employee.has_contract:
             return self.employee.contract_hourly_rate
         return self.work_block.hourly_value

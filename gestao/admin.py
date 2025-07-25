@@ -7,7 +7,7 @@ import calendar
 class EmployeeWorkAssignmentInline(admin.TabularInline):
     model = EmployeeWorkAssignment
     extra = 0
-    fields = ('employee', 'duration', 'is_completed', 'completed_date', 'receives_payment')
+    fields = ('employee', 'duration', 'is_completed', 'completed_date', 'receives_payment', 'hourly_rate_override')
     readonly_fields = ('completed_date',)
 
 class WorkBlockAdmin(admin.ModelAdmin):

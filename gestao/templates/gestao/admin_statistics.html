@@ -95,7 +95,7 @@
                                     {{ stat.employee.name }}
                                 </td>
                                 <td class="px-4 py-2 border-b">
-                                    {{  stat.total_hours_worked|duration_format  }}
+                                    {{ stat.total_hours_worked|duration_format }}
                                 </td>
                                 <td class="px-4 py-2 border-b">
                                     {{ stat.expected_hours|duration_format }}
@@ -126,7 +126,7 @@
                                     </div>
                                     {% if stat.bonus_penalty_total != 0 %}
                                     <div class="text-xs text-gray-500">
-                                        Base: €{{  stat.total_value_earned|floatformat:2  }}
+                                        Base: €{{ stat.total_value_earned|floatformat:2 }}
                                         {% if stat.bonus_penalty_total > 0 %}
                                         <span class="text-green-600"
                                             >+€{{ stat.bonus_penalty_total|floatformat:2  }}</span
@@ -183,7 +183,7 @@
                                             >
                                                 {{  day_data.date|date:"l, F d" }} - Total: {{ day_data.total_hours|duration_format   }}
                                             </h5>
-                                            {% for assignment in day_data.assignments  %}
+                                            {% for assignment in day_data.assignments %}
                                             <div class="text-xs ml-4 mb-1">
                                                 <strong
                                                     >{{ assignment.work_block.name|default:"Work Block"  }}</strong
@@ -191,32 +191,50 @@
                                                 ({{ assignment.work_block.client.name|default:"Outros"  }}) - {{ assignment.duration|duration_format  }}{% if assignment.work_block.localization %} - {{ assignment.work_block.localization  }}{% endif %}
                                                 <br />
                                                 <span class="text-gray-600">
-                                                    Client rate: €{{ assignment.work_block.hourly_value|floatformat:2  }}/h {% if assignment.employee.has_contract %} | Employee rate: €{{  assignment.employee.contract_hourly_rate|floatformat:2  }}/h (Contract) {% else %} | Employee rate: €{{ assignment.work_block.hourly_value|floatformat:2   }}/h {% endif %}
+                                                    Client rate: €{{ assignment.work_block.hourly_value|floatformat:2  }}/h | {% if assignment.hourly_rate_override %} Employee rate: €{{ assignment.hourly_rate_override|floatformat:2  }}/h (Override) {% elif assignment.employee.has_contract %} Employee rate: €{{ assignment.employee.contract_hourly_rate|floatformat:2  }}/h (Contract) {% else %} Employee rate: €{{ assignment.work_block.hourly_value|floatformat:2  }}/h (Default) {% endif %}
                                                 </span>
                                                 <br />
                                                 <div
-                                                    class="flex items-center space-x-2 mt-1"
+                                                    class="grid grid-cols-2 gap-2 mt-2"
                                                 >
-                                                    <label
-                                                        class="flex items-center text-xs"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            {%
-                                                            if
-                                                            assignment.receives_payment
-                                                            %}checked{%
-                                                            endif
-                                                            %}
-                                                            onchange="toggleAssignmentPayment({{ assignment.id }}, this.checked)"
-                                                            class="mr-1 text-xs"
-                                                        />
-                                                        <span
-                                                            class="{% if assignment.receives_payment %}text-green-600{% else %}text-red-600{% endif %}"
+                                                    <div>
+                                                        <label
+                                                            class="text-xs text-gray-500"
+                                                            >Override Rate
+                                                            (€/h)</label
                                                         >
-                                                            {% if assignment.receives_payment %}Receives Payment{% else %}NO PAYMENT{% endif %}
-                                                        </span>
-                                                    </label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value="{{ assignment.hourly_rate_override|default_if_none:'' }}"
+                                                            placeholder="{% if assignment.employee.has_contract %}{{ assignment.employee.contract_hourly_rate }}{% else %}{{ assignment.work_block.hourly_value }}{% endif %}"
+                                                            onchange="updateAssignmentHourlyRate({{ assignment.id }}, this.value)"
+                                                            class="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                                                        />
+                                                    </div>
+                                                    <div class="flex items-end">
+                                                        <label
+                                                            class="flex items-center text-xs"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                {%
+                                                                if
+                                                                assignment.receives_payment
+                                                                %}checked{%
+                                                                endif
+                                                                %}
+                                                                onchange="toggleAssignmentPayment({{ assignment.id }}, this.checked)"
+                                                                class="mr-1 text-xs"
+                                                            />
+                                                            <span
+                                                                class="{% if assignment.receives_payment %}text-green-600{% else %}text-red-600{% endif %}"
+                                                            >
+                                                                {% if assignment.receives_payment %}Receives
+                                                                Payment{% else %}NO PAYMENT{% endif %}
+                                                            </span>
+                                                        </label>
+                                                    </div>
                                                 </div>
                                             </div>
                                             {% endfor %}
@@ -966,6 +984,34 @@
             alert('An error occurred while updating payment status');
             // Revert checkbox state
             event.target.checked = !receivesPayment;
+        });
+    }
+
+    function updateAssignmentHourlyRate(assignmentId, hourlyRate) {
+        const value = hourlyRate === "" ? null : parseFloat(hourlyRate);
+
+        fetch(`/api/assignment/${assignmentId}/update-hourly-rate/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                hourly_rate_override: value
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                // Reload the page to update all calculations
+                window.location.reload();
+            } else {
+                alert('Error updating hourly rate: ' + result.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while updating hourly rate');
         });
     }
 

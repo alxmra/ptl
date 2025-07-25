@@ -1217,7 +1217,8 @@ def api_edit_work_block(request, block_id):
                     work_block=work_block,
                     duration=emp_data.get('duration', work_block.duration),
                     is_completed=emp_data.get('is_completed', False),
-                    receives_payment=emp_data.get('receives_payment', True)
+                    receives_payment=emp_data.get('receives_payment', True),
+                    hourly_rate_override=emp_data.get('hourly_rate_override')
                 )
             except Employee.DoesNotExist:
                 return JsonResponse({
@@ -1259,7 +1260,9 @@ def api_get_work_block_details(request, block_id):
                 'is_completed': assignment.is_completed,
                 'receives_payment': assignment.receives_payment,
                 'contract_hourly_rate': float(assignment.employee.contract_hourly_rate) if assignment.employee.contract_hourly_rate else None,
-                'has_contract': assignment.employee.has_contract
+                'has_contract': assignment.employee.has_contract,
+                'hourly_rate_override': float(assignment.hourly_rate_override) if assignment.hourly_rate_override else None,
+                'effective_hourly_rate': float(assignment.get_employee_hourly_rate())
             })
 
         return JsonResponse({
@@ -1447,6 +1450,37 @@ def api_toggle_assignment_payment(request, assignment_id):
         return JsonResponse({
             'success': True,
             'message': f'Payment status updated for {assignment.employee.name}'
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_admin)
+@require_POST
+@csrf_exempt
+def api_update_assignment_hourly_rate(request, assignment_id):
+    """Update hourly rate override for an employee work assignment"""
+    try:
+        data = json.loads(request.body)
+        hourly_rate_override = data.get('hourly_rate_override')
+
+        try:
+            assignment = EmployeeWorkAssignment.objects.get(id=assignment_id)
+        except EmployeeWorkAssignment.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Assignment not found'}, status=404)
+
+        # Update hourly rate override
+        assignment.hourly_rate_override = hourly_rate_override
+        assignment.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Hourly rate updated for {assignment.employee.name}',
+            'effective_rate': float(assignment.get_employee_hourly_rate())
         })
 
     except json.JSONDecodeError:
