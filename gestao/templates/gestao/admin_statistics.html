@@ -195,7 +195,7 @@
                                                 </span>
                                                 <br />
                                                 <div
-                                                    class="grid grid-cols-2 gap-2 mt-2"
+                                                    class="grid grid-cols-1 gap-2 mt-2"
                                                 >
                                                     <div>
                                                         <label
@@ -209,7 +209,7 @@
                                                             value="{{ assignment.hourly_rate_override|default_if_none:'' }}"
                                                             placeholder="{% if assignment.employee.has_contract %}{{ assignment.employee.contract_hourly_rate }}{% else %}{{ assignment.work_block.hourly_value }}{% endif %}"
                                                             onchange="updateAssignmentHourlyRate({{ assignment.id }}, this.value)"
-                                                            class="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                                                            class="w-3xs px-2 py-1 text-xs border border-gray-300 rounded"
                                                         />
                                                     </div>
                                                     <div class="flex items-end">

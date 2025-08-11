@@ -17,14 +17,30 @@ class WorkBlockAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        if obj.constant and not change:  # Only for new constant blocks
+        # Store info for save_related if this is a new constant block
+        if obj.constant and not change:
+            self._is_new_constant_block = True
+            self._original_block = obj
+        else:
+            self._is_new_constant_block = False
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+
+        # Only proceed if this was a new constant block
+        if getattr(self, '_is_new_constant_block', False):
+            obj = self._original_block
             date = datetime(obj.year, obj.month, obj.day_of_month)
             weekday = date.weekday()
             _, last_day = calendar.monthrange(obj.year, obj.month)
+
             for day in range(obj.day_of_month + 7, last_day + 1, 7):
                 if date.weekday() == weekday and day <= last_day:
                     existing = WorkBlock.objects.filter(
+                        name=obj.name,
                         day_of_month=day,
+                        localization=obj.localization,
+                        client=obj.client,
                         month=obj.month,
                         year=obj.year,
                         start_time=obj.start_time,
@@ -43,15 +59,19 @@ class WorkBlockAdmin(admin.ModelAdmin):
                             year=obj.year,
                             duration=obj.duration,
                             constant=obj.constant,
-                            archived=obj.archived
+                            archived=obj.archived,
+                            hourly_value=obj.hourly_value
                         )
-                        # Copy assignments from original block
+                        # Copy assignments from original block (now they exist!)
                         for assignment in EmployeeWorkAssignment.objects.filter(work_block=obj):
                             EmployeeWorkAssignment.objects.create(
                                 employee=assignment.employee,
                                 work_block=new_block,
-                                duration=assignment.duration
+                                duration=assignment.duration,
+                                receives_payment=assignment.receives_payment,
+                                hourly_rate_override=assignment.hourly_rate_override
                             )
+
 
 class BonusPenaltyAdmin(admin.ModelAdmin):
     list_display = ('employee', 'type', 'amount', 'month', 'year', 'created_date', 'created_by')

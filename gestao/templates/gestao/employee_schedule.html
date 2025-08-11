@@ -1,18 +1,61 @@
 {% extends 'base.html' %} {% load humanize %} {% block content %}
-<div class="container mx-auto p-4">
+<div class="container mx-auto p-2 sm:p-4">
     <!-- htmx target for schedule content -->
     <div id="schedule-content" class="bg-white rounded shadow">
         <div id="schedule-inner">
             <!-- Navigation moved inside the HTMX target for proper updating -->
-            <div
-                class="flex justify-between items-center mb-4 p-4 border-b"
-                id="nav-bar"
-            >
-                <h1 class="text-2xl font-bold" id="schedule-title">
+            <div class="mb-4 p-2 sm:p-4 border-b" id="nav-bar">
+                <h1
+                    class="text-lg sm:text-2xl font-bold mb-2 sm:mb-0"
+                    id="schedule-title"
+                >
                     Employee Schedule: {{ week_start_formatted }} - {{
                     week_end_formatted }}
                 </h1>
-                <div class="flex items-center space-x-2">
+
+                <!-- Mobile Navigation -->
+                <div class="flex flex-col sm:hidden space-y-2">
+                    <div class="flex justify-between space-x-1">
+                        {% if show_prev %}
+                        <a
+                            href="{% url 'employee_schedule_week' prev_week.year prev_week.week %}"
+                            hx-get="{% url 'employee_schedule_week' prev_week.year prev_week.week %}"
+                            hx-target="#schedule-inner"
+                            hx-swap="innerHTML"
+                            class="flex-1 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-center text-sm"
+                            >← Prev</a
+                        >
+                        {% endif %}
+                        <a
+                            href="{% url 'employee_schedule' %}"
+                            hx-get="{% url 'employee_schedule' %}"
+                            hx-target="#schedule-inner"
+                            hx-swap="innerHTML"
+                            class="flex-1 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-center text-sm"
+                            >Current</a
+                        >
+                        <a
+                            href="{% url 'employee_schedule_week' next_week.year next_week.week %}"
+                            hx-get="{% url 'employee_schedule_week' next_week.year next_week.week %}"
+                            hx-target="#schedule-inner"
+                            hx-swap="innerHTML"
+                            class="flex-1 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-center text-sm"
+                            >Next →</a
+                        >
+                    </div>
+                    <div class="flex justify-center">
+                        <a
+                            href="{% url 'logout' %}"
+                            class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                            >Logout</a
+                        >
+                    </div>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div
+                    class="hidden sm:flex items-center justify-end space-x-2 mt-2"
+                >
                     {% if show_prev %}
                     <a
                         href="{% url 'employee_schedule_week' prev_week.year prev_week.week %}"
@@ -50,73 +93,133 @@
             <!-- Hidden data for JavaScript -->
             {{ block_data_json|json_script:"block-data" }}
 
-            <!-- Schedule grid -->
-            <div
-                class="grid grid-cols-[100px_repeat(7,1fr)] p-4"
-                style="min-width: 0; position: relative"
-            >
-                <!-- Time column -->
-                <div
-                    class="border-r border-gray-400"
-                    style="position: relative"
-                >
-                    <div class="h-12 border-b border-gray-400"></div>
-                    {% for slot in time_slots %}
-                    <div
-                        class="time-slot flex items-center px-2 text-sm border-b border-gray-300"
-                        style="height: 40px"
-                    >
-                        {{ slot.0 }}
+            <!-- Mobile Schedule View -->
+            <div class="block sm:hidden p-2">
+                <div class="space-y-4">
+                    {% for day in days %}
+                    <div class="border rounded-lg p-3">
+                        <h3 class="font-semibold text-lg mb-3 border-b pb-2">
+                            {{ day.date|date:"D, d M" }}
+                        </h3>
+                        <div class="space-y-2">
+                            {% for block_data in day.blocks %}
+                            <div
+                                class="work-block-mobile p-3 rounded-lg border-2 cursor-pointer transition-colors {% if block_data.is_completed %}bg-green-100 border-green-300 hover:bg-green-200{% else %}bg-blue-100 border-blue-300 hover:bg-blue-200{% endif %}"
+                                onclick="showBlockInfo('{{ block_data.block.id }}', this, event)"
+                            >
+                                <div
+                                    class="flex justify-between items-start mb-1"
+                                >
+                                    <h4
+                                        class="font-semibold {% if block_data.is_completed %}text-green-800{% else %}text-blue-800{% endif %}"
+                                    >
+                                        {{ block_data.block.name|default:"Work
+                                        Block" }}
+                                    </h4>
+                                    {% if block_data.is_completed %}
+                                    <span
+                                        class="text-green-600 font-bold text-lg"
+                                        >✓</span
+                                    >
+                                    {% endif %}
+                                </div>
+                                <div
+                                    class="text-sm {% if block_data.is_completed %}text-green-600{% else %}text-blue-600{% endif %}"
+                                >
+                                    <div>
+                                        {{ block_data.block.start_time }} - {{
+                                        block_data.block.end_time }}
+                                    </div>
+                                    {% if block_data.block.localization %}
+                                    <div>
+                                        {{ block_data.block.localization }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-gray-500 text-center py-4">
+                                No tasks scheduled
+                            </p>
+                            {% endfor %}
+                        </div>
                     </div>
                     {% endfor %}
                 </div>
+            </div>
 
-                <!-- Day columns -->
-                {% for day in days %}
-                <div
-                    class="relative border-r border-gray-400"
-                    style="position: relative"
-                >
+            <!-- Desktop Schedule Grid -->
+            <div class="hidden sm:block">
+                <div class="overflow-x-auto">
                     <div
-                        class="h-12 text-center font-semibold border-b border-gray-400 flex items-center justify-center"
+                        class="grid grid-cols-[80px_repeat(7,minmax(120px,1fr))] min-w-max"
+                        style="position: relative"
                     >
-                        {{ day.date|date:"D, d M" }}
-                    </div>
-
-                    <!-- Time slot grid background -->
-                    {% for slot in time_slots %}
-                    <div
-                        class="time-slot border-b border-gray-300"
-                        style="height: 40px"
-                    ></div>
-                    {% endfor %}
-
-                    <!-- Work blocks -->
-                    {% for block_data in day.blocks %}
-                    <div
-                        class="work-block cursor-pointer absolute rounded px-2 py-1 text-xs overflow-hidden transition-colors {% if block_data.is_completed %}bg-green-200 border border-green-400 hover:bg-green-300{% else %}bg-blue-200 border border-blue-400 hover:bg-blue-300{% endif %}"
-                        style="top: {{ block_data.top }}px; height: {{ block_data.height }}px; width: {{ block_data.width }}%; left: {{ block_data.left }}%; z-index: 10;"
-                        onclick="showBlockInfo('{{ block_data.block.id }}', this, event)"
-                        title="Click for details"
-                    >
-                        <p
-                            class="font-semibold {% if block_data.is_completed %}text-green-800{% else %}text-blue-800{% endif %} break-words"
+                        <!-- Time column -->
+                        <div
+                            class="border-r border-gray-400 sticky left-0 bg-white z-10"
                         >
-                            {{ block_data.block.name|default:"Work Block" }}
-                        </p>
-                        {% if block_data.height > 25 %}
-                        <p
-                            class="{% if block_data.is_completed %}text-green-600{% else %}text-blue-600{% endif %} break-words"
+                            <div class="h-12 border-b border-gray-400"></div>
+                            {% for slot in time_slots %}
+                            <div
+                                class="time-slot flex items-center px-2 text-xs lg:text-sm border-b border-gray-300"
+                                style="height: 40px"
+                            >
+                                {{ slot.0 }}
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Day columns -->
+                        {% for day in days %}
+                        <div
+                            class="relative border-r border-gray-400"
+                            style="position: relative"
                         >
-                            {{ block_data.block.localization|default:"" }}
-                        </p>
-                        {% endif %} {% if block_data.is_completed %}
-                        <p class="text-green-600 font-bold">✓</p>
-                        {% endif %}
+                            <div
+                                class="h-12 text-center font-semibold border-b border-gray-400 flex items-center justify-center text-xs lg:text-sm"
+                            >
+                                {{ day.date|date:"D, d M" }}
+                            </div>
+
+                            <!-- Time slot grid background -->
+                            {% for slot in time_slots %}
+                            <div
+                                class="time-slot border-b border-gray-300"
+                                style="height: 40px"
+                            ></div>
+                            {% endfor %}
+
+                            <!-- Work blocks -->
+                            {% for block_data in day.blocks %}
+                            <div
+                                class="work-block cursor-pointer absolute rounded px-1 lg:px-2 py-1 text-xs overflow-hidden transition-colors {% if block_data.is_completed %}bg-green-200 border border-green-400 hover:bg-green-300{% else %}bg-blue-200 border border-blue-400 hover:bg-blue-300{% endif %}"
+                                style="top: {{ block_data.top }}px; height: {{ block_data.height }}px; width: {{ block_data.width }}%; left: {{ block_data.left }}%; z-index: 10; min-height: 20px; touch-action: manipulation;"
+                                onclick="showBlockInfo('{{ block_data.block.id }}', this, event)"
+                                title="Click for details"
+                            >
+                                <p
+                                    class="font-semibold {% if block_data.is_completed %}text-green-800{% else %}text-blue-800{% endif %} break-words leading-tight"
+                                >
+                                    {{ block_data.block.name|default:"Work
+                                    Block" }}
+                                </p>
+                                {% if block_data.height > 25 %}
+                                <p
+                                    class="{% if block_data.is_completed %}text-green-600{% else %}text-blue-600{% endif %} break-words leading-tight"
+                                >
+                                    {{ block_data.block.localization|default:""
+                                    }}
+                                </p>
+                                {% endif %} {% if block_data.is_completed %}
+                                <p class="text-green-600 font-bold">✓</p>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
         </div>
     </div>
@@ -124,13 +227,16 @@
     <!-- Information balloon -->
     <div
         id="info-balloon"
-        class="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-4 hidden z-50 max-w-xs"
+        class="fixed bg-white border border-gray-300 rounded-lg shadow-xl p-4 hidden z-50 max-w-xs sm:max-w-sm mx-2"
     >
         <div class="flex justify-between items-start mb-2">
-            <h3 class="font-bold text-gray-800" id="balloon-title"></h3>
+            <h3
+                class="font-bold text-gray-800 text-sm sm:text-base"
+                id="balloon-title"
+            ></h3>
             <button
                 onclick="hideBlockInfo()"
-                class="text-gray-400 hover:text-gray-600 ml-2"
+                class="text-gray-400 hover:text-gray-600 ml-2 p-1"
             >
                 <svg
                     class="w-4 h-4"
@@ -147,7 +253,10 @@
                 </svg>
             </button>
         </div>
-        <div id="balloon-content" class="text-sm text-gray-600 space-y-1">
+        <div
+            id="balloon-content"
+            class="text-xs sm:text-sm text-gray-600 space-y-1"
+        >
             <!-- Content will be populated by JavaScript -->
         </div>
     </div>
@@ -155,9 +264,9 @@
     <!-- Duration edit modal -->
     <div
         id="duration-modal"
-        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4"
     >
-        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div class="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full">
             <h3 class="text-lg font-bold mb-4">Edit Duration</h3>
             <div class="mb-4">
                 <label class="block text-sm font-medium mb-2"
@@ -169,10 +278,12 @@
                     placeholder="00:00"
                     pattern="[0-9]{1,2}:[0-9]{2}"
                     maxlength="5"
-                    class="w-full p-2 border rounded"
+                    class="w-full p-3 border rounded text-lg"
                 />
             </div>
-            <div class="flex justify-end space-x-2">
+            <div
+                class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2"
+            >
                 <button
                     onclick="closeDurationModal()"
                     class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
@@ -193,6 +304,11 @@
         var blockData = {};
         var currentBalloon = null;
         var currentBlockId = null;
+
+        // Detect if user is on mobile
+        function isMobile() {
+            return window.innerWidth < 640; // Tailwind's sm breakpoint
+        }
 
         // Load block data when page loads or when HTMX updates content
         function loadBlockData() {
@@ -235,13 +351,13 @@
             title.textContent = block.name || "Work Block";
 
             const completionButton = block.can_edit
-                ? `<button onclick="toggleCompletion('${blockId}')" class="w-full mt-2 px-3 py-1 ${block.is_completed ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"} text-white rounded text-sm">
+                ? `<button onclick="toggleCompletion('${blockId}')" class="w-full mt-2 px-3 py-2 ${block.is_completed ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"} text-white rounded text-sm">
                     ${block.is_completed ? "Mark Incomplete" : "Mark Complete"}
                    </button>`
                 : "";
 
             const durationButton = block.can_edit
-                ? `<button onclick="editDuration('${blockId}', ${block.duration_numeric})" class="w-full mt-1 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm">
+                ? `<button onclick="editDuration('${blockId}', ${block.duration_numeric})" class="w-full mt-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm">
                     Edit Duration
                    </button>`
                 : "";
@@ -260,37 +376,46 @@
             // Show balloon first to get proper dimensions
             balloon.classList.remove("hidden");
 
-            // Position balloon next to the clicked element
-            const rect = element.getBoundingClientRect();
-            const balloonRect = balloon.getBoundingClientRect();
-            const scrollTop =
-                window.pageYOffset || document.documentElement.scrollTop;
-            const scrollLeft =
-                window.pageXOffset || document.documentElement.scrollLeft;
+            // Position balloon
+            if (isMobile()) {
+                // Center balloon on mobile
+                balloon.style.left = "50%";
+                balloon.style.top = "50%";
+                balloon.style.transform = "translate(-50%, -50%)";
+            } else {
+                // Position balloon next to the clicked element on desktop
+                const rect = element.getBoundingClientRect();
+                const balloonRect = balloon.getBoundingClientRect();
+                const scrollTop =
+                    window.pageYOffset || document.documentElement.scrollTop;
+                const scrollLeft =
+                    window.pageXOffset || document.documentElement.scrollLeft;
 
-            let left = rect.right + scrollLeft + 10;
-            let top = rect.top + scrollTop;
+                let left = rect.right + scrollLeft + 10;
+                let top = rect.top + scrollTop;
 
-            // Adjust if balloon would go off screen
-            if (left + balloonRect.width > window.innerWidth + scrollLeft) {
-                left = rect.left + scrollLeft - balloonRect.width - 10;
+                // Adjust if balloon would go off screen
+                if (left + balloonRect.width > window.innerWidth + scrollLeft) {
+                    left = rect.left + scrollLeft - balloonRect.width - 10;
+                }
+                if (top + balloonRect.height > window.innerHeight + scrollTop) {
+                    top = rect.bottom + scrollTop - balloonRect.height;
+                }
+
+                // Ensure balloon doesn't go off the left edge
+                if (left < scrollLeft) {
+                    left = scrollLeft + 10;
+                }
+
+                // Ensure balloon doesn't go off the top edge
+                if (top < scrollTop) {
+                    top = scrollTop + 10;
+                }
+
+                balloon.style.left = left + "px";
+                balloon.style.top = top + "px";
+                balloon.style.transform = "none";
             }
-            if (top + balloonRect.height > window.innerHeight + scrollTop) {
-                top = rect.bottom + scrollTop - balloonRect.height;
-            }
-
-            // Ensure balloon doesn't go off the left edge
-            if (left < scrollLeft) {
-                left = scrollLeft + 10;
-            }
-
-            // Ensure balloon doesn't go off the top edge
-            if (top < scrollTop) {
-                top = scrollTop + 10;
-            }
-
-            balloon.style.left = left + "px";
-            balloon.style.top = top + "px";
 
             currentBalloon = balloon;
         }
@@ -315,9 +440,71 @@
                         // Update the block data
                         blockData[blockId].is_completed = data.is_completed;
 
-                        // Update the visual appearance
+                        // Update mobile view
+                        const mobileBlockElement = document.querySelector(
+                            `.work-block-mobile[onclick="showBlockInfo('${blockId}', this, event)"]`,
+                        );
+                        if (mobileBlockElement) {
+                            if (data.is_completed) {
+                                mobileBlockElement.className =
+                                    mobileBlockElement.className.replace(
+                                        "bg-blue-100 border-blue-300 hover:bg-blue-200",
+                                        "bg-green-100 border-green-300 hover:bg-green-200",
+                                    );
+                                mobileBlockElement.innerHTML =
+                                    mobileBlockElement.innerHTML
+                                        .replace(
+                                            "text-blue-800",
+                                            "text-green-800",
+                                        )
+                                        .replace(
+                                            "text-blue-600",
+                                            "text-green-600",
+                                        );
+                                if (
+                                    !mobileBlockElement.innerHTML.includes("✓")
+                                ) {
+                                    const titleDiv =
+                                        mobileBlockElement.querySelector(
+                                            ".flex.justify-between",
+                                        );
+                                    if (
+                                        titleDiv &&
+                                        !titleDiv.innerHTML.includes("✓")
+                                    ) {
+                                        titleDiv.innerHTML +=
+                                            '<span class="text-green-600 font-bold text-lg">✓</span>';
+                                    }
+                                }
+                            } else {
+                                mobileBlockElement.className =
+                                    mobileBlockElement.className.replace(
+                                        "bg-green-100 border-green-300 hover:bg-green-200",
+                                        "bg-blue-100 border-blue-300 hover:bg-blue-200",
+                                    );
+                                mobileBlockElement.innerHTML =
+                                    mobileBlockElement.innerHTML
+                                        .replace(
+                                            "text-green-800",
+                                            "text-blue-800",
+                                        )
+                                        .replace(
+                                            "text-green-600",
+                                            "text-blue-600",
+                                        );
+                                const checkmark =
+                                    mobileBlockElement.querySelector(
+                                        ".text-green-600.font-bold.text-lg",
+                                    );
+                                if (checkmark) {
+                                    checkmark.remove();
+                                }
+                            }
+                        }
+
+                        // Update desktop view
                         const blockElement = document.querySelector(
-                            `[onclick="showBlockInfo('${blockId}', this, event)"]`,
+                            `.work-block[onclick="showBlockInfo('${blockId}', this, event)"]`,
                         );
                         if (blockElement) {
                             if (data.is_completed) {
@@ -448,7 +635,9 @@
         function decimalToHoursMinutes(decimal) {
             const hours = Math.floor(decimal);
             const minutes = Math.round((decimal - hours) * 60);
-            return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+            return `${hours.toString().padStart(2, "0")}:${minutes
+                .toString()
+                .padStart(2, "0")}`;
         }
 
         // Convert HH:MM format to decimal hours
@@ -490,7 +679,8 @@
             if (
                 currentBalloon &&
                 !currentBalloon.contains(event.target) &&
-                !event.target.closest(".work-block")
+                !event.target.closest(".work-block") &&
+                !event.target.closest(".work-block-mobile")
             ) {
                 hideBlockInfo();
             }
@@ -498,7 +688,7 @@
 
         // Hide balloon when scrolling
         document.addEventListener("scroll", function () {
-            if (currentBalloon) {
+            if (currentBalloon && !isMobile()) {
                 hideBlockInfo();
             }
         });
@@ -516,6 +706,19 @@
                 ) {
                     closeDurationModal();
                 }
+            }
+        });
+
+        // Handle orientation change on mobile
+        window.addEventListener("orientationchange", function () {
+            if (currentBalloon && isMobile()) {
+                // Re-center balloon after orientation change
+                setTimeout(function () {
+                    const balloon = document.getElementById("info-balloon");
+                    balloon.style.left = "50%";
+                    balloon.style.top = "50%";
+                    balloon.style.transform = "translate(-50%, -50%)";
+                }, 100);
             }
         });
     </script>
