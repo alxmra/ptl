@@ -9,8 +9,7 @@
                     class="text-lg sm:text-2xl font-bold mb-2 sm:mb-0"
                     id="schedule-title"
                 >
-                    Employee Schedule: {{ week_start_formatted }} - {{
-                    week_end_formatted }}
+                    Employee Schedule: {{ week_start_formatted }} - {{ week_end_formatted }}
                 </h1>
 
                 <!-- Mobile Navigation -->
@@ -113,8 +112,7 @@
                                     <h4
                                         class="font-semibold {% if block_data.is_completed %}text-green-800{% else %}text-blue-800{% endif %}"
                                     >
-                                        {{ block_data.block.name|default:"Work
-                                        Block" }}
+                                        {{ block_data.block.name|default:"Work Block" }}
                                     </h4>
                                     {% if block_data.is_completed %}
                                     <span
@@ -127,8 +125,7 @@
                                     class="text-sm {% if block_data.is_completed %}text-green-600{% else %}text-blue-600{% endif %}"
                                 >
                                     <div>
-                                        {{ block_data.block.start_time }} - {{
-                                        block_data.block.end_time }}
+                                        {{ block_data.block.start_time }} - {{ block_data.block.end_time }}
                                     </div>
                                     {% if block_data.block.localization %}
                                     <div>
@@ -201,15 +198,13 @@
                                 <p
                                     class="font-semibold {% if block_data.is_completed %}text-green-800{% else %}text-blue-800{% endif %} break-words leading-tight"
                                 >
-                                    {{ block_data.block.name|default:"Work
-                                    Block" }}
+                                    {{ block_data.block.name|default:"Work Block" }}
                                 </p>
                                 {% if block_data.height > 25 %}
                                 <p
                                     class="{% if block_data.is_completed %}text-green-600{% else %}text-blue-600{% endif %} break-words leading-tight"
                                 >
-                                    {{ block_data.block.localization|default:""
-                                    }}
+                                    {{ block_data.block.localization|default:"" }}
                                 </p>
                                 {% endif %} {% if block_data.is_completed %}
                                 <p class="text-green-600 font-bold">✓</p>

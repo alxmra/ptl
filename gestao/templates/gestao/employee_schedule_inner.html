@@ -110,8 +110,7 @@
                         class="text-sm {% if block_data.is_completed %}text-green-600{% else %}text-blue-600{% endif %}"
                     >
                         <div>
-                            {{ block_data.block.start_time }} - {{
-                            block_data.block.end_time }}
+                            {{ block_data.block.start_time }} - {{ block_data.block.end_time }}
                         </div>
                         {% if block_data.block.localization %}
                         <div>{{ block_data.block.localization }}</div>
