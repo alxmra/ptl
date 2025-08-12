@@ -168,6 +168,7 @@ def index(request, year=None, week=None):
 
     context = {
         'days': days,
+        'username': Employee.objects.get(user=request.user.name).name,
         'week_start': start_date,
         'week_end': end_date,
         'week_start_formatted': start_date.strftime("%B %d, %Y"),
@@ -325,6 +326,7 @@ def employee_tasks(request, year=None, week=None):
 
     context = {
         'days': days,
+        'username': Employee.objects.get(user=request.user).name,
         'week_start': start_date,
         'week_end': end_date,
         'week_start_formatted': start_date.strftime("%B %d, %Y"),
