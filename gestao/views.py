@@ -65,7 +65,7 @@ def index(request, year=None, week=None):
 
     # Organize blocks by day with corrected positioning and overlap detection
     days = []
-    time_slots = [(f"{h:02d}:00", f"{h:02d}:30") for h in range(6, 23)]  # 6 AM to 11 PM
+    time_slots = [(f"{h:02d}:00", f"{h:02d}:30") for h in range(6, 24)]  # 6 AM to 11 PM
 
     def blocks_overlap(block1, block2):
         """Check if two blocks have overlapping times"""
@@ -168,7 +168,6 @@ def index(request, year=None, week=None):
 
     context = {
         'days': days,
-        'username': Employee.objects.get(user=request.user.name).name,
         'week_start': start_date,
         'week_end': end_date,
         'week_start_formatted': start_date.strftime("%B %d, %Y"),
@@ -229,7 +228,7 @@ def employee_tasks(request, year=None, week=None):
 
     # Organize blocks by day with positioning similar to admin view
     days = []
-    time_slots = [(f"{h:02d}:00", f"{h:02d}:30") for h in range(6, 23)]  # 6 AM to 11 PM
+    time_slots = [(f"{h:02d}:00", f"{h:02d}:30") for h in range(6, 24)]  # 6 AM to 11 PM
 
     def blocks_overlap(block1, block2):
         """Check if two blocks have overlapping times"""

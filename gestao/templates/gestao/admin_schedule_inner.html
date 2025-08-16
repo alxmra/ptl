@@ -1,3 +1,4 @@
+{% load l10n %}
 <!-- Navigation bar - included in HTMX updates -->
 <div class="flex justify-between items-center mb-4 p-4 border-b" id="nav-bar">
     <div class="flex items-center space-x-3">
@@ -85,7 +86,7 @@
             onclick="toggleDayZoom({{ forloop.counter0 }})"
             title="Click to zoom into this day"
         >
-            {{ day.date|date:"D, d M" }}
+            {{ day.date|date:"l, d M" }}
         </div>
 
         <!-- Time slot grid background -->
@@ -100,7 +101,7 @@
         {% for block_data in day.blocks %}
         <div
             class="work-block cursor-pointer absolute {% if block_data.block.archived %}bg-gray-300 border border-gray-500{% else %}bg-blue-200 border border-blue-400{% endif %} bg-blue-200 border border-blue-400 rounded px-2 py-1 text-xs overflow-hidden {% if block_data.block.archived %}hover:bg-gray-400{% else %}hover:bg-blue-300{% endif %} hover:bg-blue-300 transition-all duration-300 ease-in-out"
-            style="top: {{ block_data.top }}px; height: {{ block_data.height }}px; width: {{ block_data.width }}%; left: {{ block_data.left }}%; z-index: 10;"
+            style="top: {{ block_data.top|unlocalize }}px; height: {{ block_data.height|unlocalize }}px; width: {{ block_data.width|unlocalize }}%; left: {{ block_data.left|unlocalize }}%; z-index: 10;"
             onclick="showBlockInfo('{{ block_data.block.id }}', this, event)"
             title="Click for details"
         >
