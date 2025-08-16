@@ -7,8 +7,8 @@ import calendar
 class EmployeeWorkAssignmentInline(admin.TabularInline):
     model = EmployeeWorkAssignment
     extra = 0
-    fields = ('employee', 'duration', 'is_completed', 'completed_date', 'receives_payment', 'hourly_rate_override')
-    readonly_fields = ('completed_date',)
+    fields = ('employee', 'duration', 'is_completed', 'completed_date', 'assigned_date', 'receives_payment', 'hourly_rate_override')
+    readonly_fields = ('completed_date', 'assigned_date')
 
 class WorkBlockAdmin(admin.ModelAdmin):
     list_display = ('name', 'day_of_month', 'month', 'year', 'start_time', 'end_time', 'localization', 'client', 'hourly_value', 'archived', 'constant')

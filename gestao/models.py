@@ -10,11 +10,15 @@ class Client(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        verbose_name = 'Cliente'
+        verbose_name_plural = 'Clientes'
+
 
 class Employee(models.Model):
-    name = models.CharField(max_length=100)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
-    contract_hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Hourly rate for contracted employees (overrides workblock rates)")
+    name = models.CharField(max_length=100, verbose_name='Nome')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, help_text='Nome de utilizador das credenciais criadas para o empregado em questão.', verbose_name='Nome de utilizador')
+    contract_hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="(CONTRATO) Valor hora aplicado a todos os serviços. Deixar vazio SE o empregado não estiver em contrato. NOTA: Se não estiver em contrato o valor terá que ser atribuído manualmente por bloco de trabalho criado!!!", verbose_name='Valor/Hora do contrato')
 
     def __str__(self):
         return self.name
@@ -23,16 +27,20 @@ class Employee(models.Model):
     def has_contract(self):
         return self.contract_hourly_rate is not None
 
+    class Meta:
+        verbose_name = 'Empregado'
+        verbose_name_plural = 'Empregados'
+
 
 class EmployeeWorkAssignment(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
-    work_block = models.ForeignKey('WorkBlock', on_delete=models.CASCADE)
-    duration = models.DecimalField(max_digits=5, decimal_places=2, help_text="Duration in hours for this employee")
-    is_completed = models.BooleanField(default=False)
-    assigned_date = models.DateTimeField(auto_now_add=True)
-    completed_date = models.DateTimeField(null=True, blank=True)
-    receives_payment = models.BooleanField(default=True, help_text="Whether this employee receives payment for this workblock")
-    hourly_rate_override = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Override hourly rate for this specific assignment")
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, verbose_name='Empregado')
+    work_block = models.ForeignKey('WorkBlock', on_delete=models.CASCADE, verbose_name='Bloco de trabalho')
+    duration = models.DecimalField(max_digits=5, decimal_places=2, help_text="Duration in hours for this employee", verbose_name='Duração (Que poderá ser alterada)')
+    is_completed = models.BooleanField(default=False, verbose_name='Completou?')
+    assigned_date = models.DateTimeField(auto_now_add=True, verbose_name='Data de atribuição')
+    completed_date = models.DateTimeField(null=True, blank=True, verbose_name='Data da última marcação de concluído')
+    receives_payment = models.BooleanField(default=True, help_text="Desativar caso o empregado não possa receber por este bloco", verbose_name='Recebe pagamento?')
+    hourly_rate_override = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Se o empregado não estiver sujeito a contrato, este valor será aquele respetivo ao pagamento pelo trabalho feito no bloco. Deixar VAZIO nos empregados por contrato. NOTA: Se porventura um empregado por contrato tiver que receber um valor/hora diferente por este serviço, colocar um valor irá sobrepor o valor do contrato para este bloco (incluindo blocos criados pela opção CONSTANTE estar ativada aquando da criação do bloco de trabalho. Isto se o valor estiver a ser definido no menu de blocos de trabalho)", verbose_name='Valor/Hora a receber para o serviço atribuído')
 
     class Meta:
         unique_together = ['employee', 'work_block']
@@ -62,19 +70,19 @@ class EmployeeWorkAssignment(models.Model):
 
 
 class WorkBlock(models.Model):
-    name = models.CharField(max_length=200, blank=True, default="")
-    localization = models.CharField(max_length=200, blank=True, default="")
-    client = models.ForeignKey(Client, on_delete=models.SET_NULL, null=True, blank=True)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-    day_of_month = models.IntegerField()
-    month = models.IntegerField(default=timezone.now().month)
-    year = models.IntegerField(default=timezone.now().year)
-    employees_assigned = models.ManyToManyField(Employee, through=EmployeeWorkAssignment, related_name='assigned_blocks', blank=True)
-    archived = models.BooleanField(default=False)
-    duration = models.DecimalField(max_digits=5, decimal_places=2, help_text="Default duration in hours")
-    hourly_value = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Value per hour for this work block")
-    constant = models.BooleanField(default=False, help_text="If true, repeats on same weekday for the month")
+    name = models.CharField(max_length=200, blank=True, default="", verbose_name='Nome')
+    localization = models.CharField(max_length=200, blank=True, default="", verbose_name='Morada')
+    client = models.ForeignKey(Client, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Cliente')
+    start_time = models.TimeField(verbose_name='Hora de início')
+    end_time = models.TimeField(verbose_name='Hora de fim')
+    day_of_month = models.IntegerField(verbose_name='Dia do mês')
+    month = models.IntegerField(default=timezone.now().month, verbose_name='Mês')
+    year = models.IntegerField(default=timezone.now().year, verbose_name='Ano')
+    employees_assigned = models.ManyToManyField(Employee, through=EmployeeWorkAssignment, related_name='assigned_blocks', blank=True, verbose_name='Empregados atribuídos')
+    archived = models.BooleanField(default=False, verbose_name='Arquivado?')
+    duration = models.DecimalField(max_digits=5, decimal_places=2, help_text="Duração do serviço em valores decimais. Fórmula para converter tempos (H:M) em tempos decimais: HORAS + (MINUTOS / 60)", verbose_name='Duração')
+    hourly_value = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Valor à hora a cobrar ao cliente", verbose_name='Valor/Hora')
+    constant = models.BooleanField(default=False, help_text="Com esta opção ativada, a tarefa será replicada no mesmo dia da semana em todas as semanas até ao final do mês selecionado.", verbose_name='Constante?')
 
     def clean(self):
         if self.day_of_month < 1 or self.day_of_month > 31:
@@ -105,12 +113,12 @@ class WorkBlock(models.Model):
         except EmployeeWorkAssignment.DoesNotExist:
             return False
 
-
-
-
-
     def __str__(self):
         return f"{self.name or 'WorkBlock'} {self.day_of_month}/{self.month}/{self.year} {self.start_time}-{self.end_time}"
+
+    class Meta:
+        verbose_name = 'Bloco de Trabalho'
+        verbose_name_plural = 'Blocos de Trabalho'
 
 
 class BonusPenalty(models.Model):
@@ -121,16 +129,18 @@ class BonusPenalty(models.Model):
         (PENALTY, 'Penalty'),
     ]
 
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='bonus_penalties')
-    type = models.CharField(max_length=10, choices=TYPE_CHOICES)
-    amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Amount in euros")
-    justification = models.TextField(help_text="Reason for bonus or penalty")
-    month = models.IntegerField()
-    year = models.IntegerField()
-    created_date = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='bonus_penalties', verbose_name='Empregado')
+    type = models.CharField(max_length=10, choices=TYPE_CHOICES, verbose_name='Tipo')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Valor a adicionar/subtrair do TOTAL do mês", verbose_name='Quantia')
+    justification = models.TextField(help_text="Justificação para o bónus/penalização", verbose_name='Justificação')
+    month = models.IntegerField(verbose_name='Mês')
+    year = models.IntegerField(verbose_name='Ano')
+    created_date = models.DateTimeField(auto_now_add=True, verbose_name='Data de criação')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Sancionador')
 
     class Meta:
+        verbose_name = 'Bónus ou Penalização'
+        verbose_name_plural = 'Bónus ou Penalizações'
         ordering = ['-created_date']
 
     def __str__(self):
