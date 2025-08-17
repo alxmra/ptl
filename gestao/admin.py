@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Employee, WorkBlock, Client, EmployeeWorkAssignment, BonusPenalty
+from .models import Employee, WorkBlock, Client, EmployeeWorkAssignment, BonusPenalty, Changelog
 from datetime import datetime, timedelta
 from django.utils import timezone
 import calendar
@@ -90,6 +90,17 @@ class EmployeeAdmin(admin.ModelAdmin):
 
 admin.site.register(Employee, EmployeeAdmin)
 admin.site.register(WorkBlock, WorkBlockAdmin)
+class ChangelogAdmin(admin.ModelAdmin):
+    list_display = ('title', 'date_added', 'priority', 'get_seen_count')
+    list_filter = ('date_added', 'priority')
+    search_fields = ('title', 'description')
+    readonly_fields = ('date_added',)
+
+    def get_seen_count(self, obj):
+        return obj.users_seen.count()
+    get_seen_count.short_description = 'Visualizações'
+
 admin.site.register(Client)
 admin.site.register(EmployeeWorkAssignment)
 admin.site.register(BonusPenalty, BonusPenaltyAdmin)
+admin.site.register(Changelog, ChangelogAdmin)

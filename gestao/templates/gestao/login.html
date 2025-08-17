@@ -1,21 +1,23 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="max-w-md mx-auto mt-10 p-6 bg-white rounded shadow">
+    <img src="https://i.ibb.co/0prLySTD/AF-logo-geral-sai-casa.png" alt=""\>
     <h1 class="text-2xl font-bold mb-4">Login</h1>
+    <p class="text-gray-500 mb-4">Utilize as suas credenciais para entrar na plataforma</p>
     {% if error %}
     <p class="text-red-500 mb-4">{{ error }}</p>
     {% endif %}
     <form method="post" action="{% url 'login' %}">
         {% csrf_token %}
         <div class="mb-4">
-            <label class="block text-sm font-medium" for="username">Username</label>
+            <label class="block text-sm font-medium" for="username">Nome de Utilizador</label>
             <input type="text" name="username" id="username" class="w-full p-2 border rounded">
         </div>
         <div class="mb-4">
-            <label class="block text-sm font-medium" for="password">Password</label>
+            <label class="block text-sm font-medium" for="password">Palavra-chave</label>
             <input type="password" name="password" id="password" class="w-full p-2 border rounded">
         </div>
-        <button type="submit" class="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600">Login</button>
+        <button type="submit" class="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600">Entrar (Login)</button>
     </form>
 </div>
 {% endblock %}

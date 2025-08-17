@@ -12,20 +12,17 @@
 <div style="background: #417690; padding: 10px; margin-bottom: 10px;">
     <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
         <div>
-            <span style="color: white; font-weight: bold;">PTL Management System</span>
+            <span style="color: white; font-weight: bold; margin-right: 10px; font-size: 15px">PTL - Programação de Tarefas de Limpeza</span>
         </div>
         <div>
             <a href="{% url 'admin_schedule' %}"
                style="background: #ffc107; color: #000; padding: 8px 16px; border-radius: 4px; text-decoration: none; margin-right: 10px; font-weight: bold;">
-                📅 Schedule View
+                📅 Visualizar Horários
             </a>
             <a href="{% url 'admin_statistics' %}"
                style="background: #6f42c1; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; margin-right: 10px; font-weight: bold;">
-                📊 Statistics
+                📊 Estatísticas
             </a>
-            {% if user.is_active and user.is_staff %}
-                <span style="color: white; margin-right: 10px;">Welcome, {{ user.get_full_name|default:user.username }}!</span>
-            {% endif %}
         </div>
     </div>
 </div>

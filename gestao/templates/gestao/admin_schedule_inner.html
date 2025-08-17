@@ -2,8 +2,8 @@
 <!-- Navigation bar - included in HTMX updates -->
 <div class="flex justify-between items-center mb-4 p-4 border-b" id="nav-bar">
     <div class="flex items-center space-x-3">
-        <h1 class="text-2xl font-bold" id="schedule-title">
-            Admin Schedule: {{ week_start_formatted }} - {{ week_end_formatted }}
+        <h1 class="text-xl font-bold" id="schedule-title">
+            Todos os Horários: {{ week_start }} - {{ week_end }}
         </h1>
         <button
             id="exit-zoom-btn"
@@ -21,7 +21,7 @@
             hx-target="#schedule-inner"
             hx-swap="innerHTML"
             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >Previous Week</a
+            >Semana Anterior</a
         >
         <a
             href="{% url 'admin_schedule' %}"
@@ -29,7 +29,7 @@
             hx-target="#schedule-inner"
             hx-swap="innerHTML"
             class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            >Current Week</a
+            >Atual</a
         >
         <a
             href="{% url 'admin_schedule_week' next_week.year next_week.week %}"
@@ -37,17 +37,17 @@
             hx-target="#schedule-inner"
             hx-swap="innerHTML"
             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >Next Week</a
+            >Próxima Semana</a
         >
         <a
             href="{% url 'admin_statistics' %}"
             class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
-            >Statistics</a
+            >Estatísticas</a
         >
         <a
             href="/admin/"
             class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >Admin Dashboard</a
+            >Painel</a
         >
     </div>
 </div>
@@ -84,9 +84,9 @@
         <div
             class="h-12 text-center font-semibold border-b border-gray-400 flex items-center justify-center cursor-pointer hover:bg-blue-50 transition-all duration-200 ease-in-out"
             onclick="toggleDayZoom({{ forloop.counter0 }})"
-            title="Click to zoom into this day"
+            title="Clica para ver este dia com mais detalhe"
         >
-            {{ day.date|date:"l, d M" }}
+            {{ day.date|date:"l, d M." }}
         </div>
 
         <!-- Time slot grid background -->

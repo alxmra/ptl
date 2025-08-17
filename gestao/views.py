@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import WorkBlock, Employee, EmployeeWorkAssignment, Client, BonusPenalty
+from .models import WorkBlock, Employee, EmployeeWorkAssignment, Client, BonusPenalty, Changelog
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.contrib.auth import authenticate, login, logout
@@ -10,6 +10,9 @@ from django.db.models import Sum, Count
 from decimal import Decimal
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+
+from django.utils import translation
+from django.utils.translation import gettext as _
 
 import calendar
 import csv
@@ -690,7 +693,7 @@ def admin_statistics(request, year=None, month=None):
         'employee_chart_data': json.dumps(employee_chart_data),
         'client_chart_data': json.dumps(client_chart_data),
         'current_month': first_day,
-        'month_name': calendar.month_name[month],
+        'month_name': _(calendar.month_name[month]),
         'year': year,
         'month': month,
         'prev_month': {'year': prev_month.year, 'month': prev_month.month},
@@ -1042,6 +1045,7 @@ def login_view(request):
         if user is not None:
             login(request, user)
             if user.is_staff:
+                request.session['check_changelogs'] = True
                 return redirect('admin_schedule')
             return redirect('employee_schedule')
         else:
@@ -1182,6 +1186,7 @@ def api_edit_work_block(request, block_id):
 
     try:
         data = json.loads(request.body)
+        print(data)
         work_block = WorkBlock.objects.get(id=block_id)
 
         # Update basic fields
@@ -1488,3 +1493,91 @@ def api_update_assignment_hourly_rate(request, assignment_id):
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def api_check_changelogs_done(request):
+    """Reset the check_changelogs session flag"""
+    if request.method == 'POST' and request.user.is_authenticated and request.user.is_staff:
+        if 'check_changelogs' in request.session:
+            del request.session['check_changelogs']
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False}, status=403)
+
+
+def api_get_changelogs(request):
+    """Get all changelogs for the current user with seen status"""
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+    # Get unseen changelogs
+    unseen_changelogs = Changelog.get_unseen_changelogs(request.user)
+
+    # Get all changelogs ordered by date
+    all_changelogs = Changelog.objects.all().order_by('-priority', '-date_added')
+
+    changelog_data = []
+    unseen_count = 0
+
+    for changelog in all_changelogs:
+        is_unseen = changelog in unseen_changelogs
+        if is_unseen:
+            unseen_count += 1
+
+        changelog_data.append({
+            'id': changelog.id,
+            'title': changelog.title,
+            'description': changelog.description,
+            'date_added': changelog.date_added.strftime('%d/%m/%Y %H:%M'),
+            'priority': changelog.priority,
+            'is_unseen': is_unseen
+        })
+
+    return JsonResponse({
+        'success': True,
+        'changelogs': changelog_data,
+        'unseen_count': unseen_count
+    })
+
+
+def api_mark_changelog_seen(request, changelog_id):
+    """Mark a changelog as seen by the current user"""
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+    try:
+        changelog = Changelog.objects.get(id=changelog_id)
+        changelog.mark_as_seen(request.user)
+        return JsonResponse({'success': True})
+    except Changelog.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Changelog not found'}, status=404)
+
+
+def api_mark_all_changelogs_seen(request):
+    """Mark all changelogs as seen by the current user"""
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+    changelogs = Changelog.get_unseen_changelogs(request.user)
+    for changelog in changelogs:
+        changelog.mark_as_seen(request.user)
+
+    # Get all changelogs with updated seen status
+    all_changelogs = Changelog.objects.all().order_by('-priority', '-date_added')
+    changelog_data = []
+
+    for changelog in all_changelogs:
+        changelog_data.append({
+            'id': changelog.id,
+            'title': changelog.title,
+            'description': changelog.description,
+            'date_added': changelog.date_added.strftime('%d/%m/%Y %H:%M'),
+            'priority': changelog.priority,
+            'is_unseen': False
+        })
+
+    return JsonResponse({
+        'success': True,
+        'changelogs': changelog_data,
+        'unseen_count': 0
+    })

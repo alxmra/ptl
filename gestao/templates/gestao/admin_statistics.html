@@ -7,33 +7,33 @@
         <!-- Navigation -->
         <div class="flex justify-between items-center mb-4 p-4 border-b">
             <h1 class="text-2xl font-bold">
-                Statistics: {{ month_name }} {{ year }}
+                Estatísticas: {{ month_name }} {{ year }}
             </h1>
             <div class="flex items-center space-x-2">
                 <a
                     href="{% url 'admin_statistics_month' prev_month.year prev_month.month %}"
                     class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                    >Previous Month</a
+                    >Mês Anterior</a
                 >
                 <a
                     href="{% url 'admin_statistics' %}"
                     class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-                    >Current Month</a
+                    >Atual</a
                 >
                 <a
                     href="{% url 'admin_statistics_month' next_month.year next_month.month %}"
                     class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                    >Next Month</a
+                    >Próximo Mês</a
                 >
                 <a
                     href="{% url 'admin_schedule' %}"
                     class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
-                    >Schedule</a
+                    >Horário</a
                 >
                 <a
                     href="/admin/"
                     class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-                    >Admin Dashboard</a
+                    >Painel</a
                 >
             </div>
         </div>
@@ -48,13 +48,14 @@
                             onclick="hideAllEmployeeDetails()"
                             class="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
                         >
-                            Hide All Details
+                            Ocultar todos os detalhes
                         </button>
+                            <!--href="{% url 'admin_statistics_month' year month %}?export=employee_csv"-->
                         <a
-                            href="{% url 'admin_statistics_month' year month %}?export=employee_csv"
-                            class="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                            href='#'
+                            class="px-3 py-1 bg-green-300 text-white rounded text-sm hover:bg-green-400"
                         >
-                            Export Employee Data (CSV)
+                            (Em breve)
                         </a>
                     </div>
                 </div>
@@ -63,28 +64,27 @@
                         <thead class="bg-gray-100">
                             <tr>
                                 <th class="px-4 py-2 text-left border-b">
-                                    Employee
+                                    Empregado
                                 </th>
                                 <th class="px-4 py-2 text-left border-b">
-                                    Hours Worked ({{ month_name }})
+                                    Horas Completadas <span class="text-xs">({{ month_name }})</span>
                                 </th>
                                 <th class="px-4 py-2 text-left border-b">
-                                    Expected Hours
+                                    Horas Esperadas
                                 </th>
                                 <th class="px-4 py-2 text-left border-b">
-                                    Value Earned ({{ month_name }})
+                                    Valor a pagar <span class="text-xs">({{ month_name }})</span>
                                 </th>
                                 <th class="px-4 py-2 text-left border-b">
-                                    Actions
+                                    Ações
                                 </th>
                                 <th class="px-4 py-2 text-left border-b">
-                                    Current Week Blocks
+                                    Blocos nesta semana
                                 </th>
                                 <th class="px-4 py-2 text-left border-b">
-                                    Current Week Hours
+                                    Horas nesta semana
                                 </th>
                                 <th class="px-4 py-2 text-left border-b">
-                                    Details
                                 </th>
                             </tr>
                         </thead>
@@ -144,7 +144,7 @@
                                         onclick="openBonusPenaltyModal({{ stat.employee.id }}, '{{ stat.employee.name|escapejs }}', {{ year }}, {{ month }})"
                                         class="px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 mr-1"
                                     >
-                                        Bonus/Penalty
+                                        Bónus/Penalizações
                                     </button>
                                 </td>
                                 <td class="px-4 py-2 border-b">
@@ -158,7 +158,7 @@
                                         onclick="toggleEmployeeDetails('{{ stat.employee.id }}')"
                                         class="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
                                     >
-                                        Show Details
+                                        Detalhes
                                     </button>
                                 </td>
                             </tr>
@@ -172,7 +172,7 @@
                                 >
                                     <div class="max-h-60 overflow-y-auto">
                                         <h4 class="font-semibold mb-2">
-                                            Daily Work Details for {{  stat.employee.name  }}:
+                                            Detalhes do Serviço (Concluído) de {{  stat.employee.name  }}:
                                         </h4>
                                         {% for day, day_data in stat.daily_work  %}
                                         <div
@@ -184,14 +184,14 @@
                                                 {{  day_data.date|date:"l, F d" }} - Total: {{ day_data.total_hours|duration_format   }}
                                             </h5>
                                             {% for assignment in day_data.assignments %}
-                                            <div class="text-xs ml-4 mb-1">
+                                            <div class="text-xs ml-4 mb-1 p-2 rounded border">
                                                 <strong
                                                     >{{ assignment.work_block.name|default:"Work Block"  }}</strong
                                                 >
                                                 ({{ assignment.work_block.client.name|default:"Outros"  }}) - {{ assignment.duration|duration_format  }}{% if assignment.work_block.localization %} - {{ assignment.work_block.localization  }}{% endif %}
                                                 <br />
                                                 <span class="text-gray-600">
-                                                    Client rate: €{{ assignment.work_block.hourly_value|floatformat:2  }}/h | {% if assignment.hourly_rate_override %} Employee rate: €{{ assignment.hourly_rate_override|floatformat:2  }}/h (Override) {% elif assignment.employee.has_contract %} Employee rate: €{{ assignment.employee.contract_hourly_rate|floatformat:2  }}/h (Contract) {% else %} Employee rate: €{{ assignment.work_block.hourly_value|floatformat:2  }}/h (Default) {% endif %}
+                                                    Valor do Cliente: €{{ assignment.work_block.hourly_value|floatformat:2  }}/h | {% if assignment.hourly_rate_override %} Valor do Empregado: €{{ assignment.hourly_rate_override|floatformat:2  }}/h (Definido) {% elif assignment.employee.has_contract %} Valor do Empregado: €{{ assignment.employee.contract_hourly_rate|floatformat:2  }}/h (CONTRATO) {% else %} Valor do Empregado: <span class='text-red-500'>Por definir</span> {% endif %}
                                                 </span>
                                                 <br />
                                                 <div

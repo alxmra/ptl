@@ -27,4 +27,8 @@ urlpatterns = [
     path('api/bonus-penalty/<int:bonus_penalty_id>/delete/', views.api_delete_bonus_penalty, name='api_delete_bonus_penalty'),
     path('api/assignment/<int:assignment_id>/toggle-payment/', views.api_toggle_assignment_payment, name='api_toggle_assignment_payment'),
     path('api/assignment/<int:assignment_id>/update-hourly-rate/', views.api_update_assignment_hourly_rate, name='api_update_assignment_hourly_rate'),
+    path('api/changelogs/', views.api_get_changelogs, name='api_get_changelogs'),
+    path('api/changelog/<int:changelog_id>/mark-seen/', views.api_mark_changelog_seen, name='api_mark_changelog_seen'),
+    path('api/changelogs/mark-all-seen/', views.api_mark_all_changelogs_seen, name='api_mark_all_changelogs_seen'),
+    path('api/changelogs/check-done/', views.api_check_changelogs_done, name='api_check_changelogs_done'),
 ]
